@@ -1,0 +1,138 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { Suggestion } from '@shared/types';
+import './styles.css';
+
+interface SuggestionPopupProps {
+  originalText: string;
+  suggestions: Suggestion[];
+  onAccept: (suggestion: Suggestion) => void;
+  onDismiss: () => void;
+  onCopy: (text: string) => void;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export default function SuggestionPopup({
+  originalText,
+  suggestions,
+  onAccept,
+  onDismiss,
+  onCopy,
+  isLoading,
+  error,
+}: SuggestionPopupProps) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [suggestions]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isLoading) return;
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (suggestions[selectedIndex]) onAccept(suggestions[selectedIndex]);
+          break;
+        case 'Escape':
+          e.preventDefault();
+          onDismiss();
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLoading, selectedIndex, suggestions, onAccept, onDismiss]);
+
+  return (
+    <div className="suggestion-popup">
+      <div className="popup-header">
+        <h3>AI Suggestions</h3>
+        <button type="button" className="close-btn" onClick={onDismiss} aria-label="Close">
+          ×
+        </button>
+      </div>
+
+      <div className="original-text">
+        <label>Original:</label>
+        <p>{originalText}</p>
+      </div>
+
+      {error && (
+        <div className="error-state">
+          <p>{error}</p>
+        </div>
+      )}
+
+      {isLoading && !error && (
+        <div className="loading-state">
+          <div className="spinner" />
+          <p>Generating suggestions...</p>
+        </div>
+      )}
+
+      {!isLoading && !error && suggestions.length > 0 && (
+        <div className="suggestions-list">
+          <AnimatePresence>
+            {suggestions.map((suggestion, index) => (
+              <motion.div
+                key={`${suggestion.type}-${index}`}
+                className={`suggestion-item ${index === selectedIndex ? 'selected' : ''}`}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                onClick={() => setSelectedIndex(index)}
+              >
+                <div className="suggestion-header">
+                  <span className="suggestion-type">{suggestion.type}</span>
+                  <span className="confidence">
+                    {Math.round((suggestion.confidence ?? 1) * 100)}%
+                  </span>
+                </div>
+                <p className="suggestion-text">{suggestion.text}</p>
+                <div className="suggestion-actions">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => onAccept(suggestion)}
+                  >
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => onCopy(suggestion.text)}
+                  >
+                    Copy
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {!isLoading && !error && suggestions.length > 0 && (
+        <div className="popup-footer">
+          <div className="keyboard-hints">
+            <span>↑↓ Navigate</span>
+            <span>Enter Accept</span>
+            <span>Esc Dismiss</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
