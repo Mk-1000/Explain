@@ -47,8 +47,11 @@ Output is in `release/`.
 - **AI providers**: OpenAI, OpenRouter, Anthropic, Ollama (local). Configure API keys and priority in Settings → AI Providers.
 - **Enhancement types**: Grammar, rephrase, formal, casual, concise, expand (configurable default).
 - **Replace / Copy**: Replace pastes the suggestion and closes the popup; Copy writes to clipboard.
+- **Diff view**: Toggle diff view to see word-level changes between original and enhanced text with statistics.
 - **History**: Optional history of enhancements (enable in Preferences).
 - **Privacy**: Sensitive-data detection and excluded-app list.
+- **Cross-platform**: Native Electron APIs for better Linux/Windows/Mac compatibility (no RobotJS dependency).
+- **Error handling**: Automatic fallback between providers with detailed error reporting.
 
 ## Project structure
 
@@ -59,9 +62,10 @@ Output is in `release/`.
 
 ## Requirements
 
-- **robotjs**: For text selection (simulated Ctrl/C) and paste (Ctrl+V). On Linux you may need: `libxtst-dev`, `libpng++-dev`.
+- **Node.js** 18+ and npm
+- **No native dependencies**: Uses Electron's native APIs for clipboard and cursor position. Paste simulation uses platform-specific tools (xdotool on Linux, osascript on macOS, PowerShell on Windows) if available, but manual paste (Ctrl+V / Cmd+V) always works.
 
-**Keyboard shortcut:** If the shortcut seems to do nothing, select some text first or copy text to the clipboard. On Linux, selection capture can fail; the app will then open the popup with your clipboard content (or empty) so you can paste.
+**Keyboard shortcut:** Select text first or copy text to the clipboard, then press the shortcut. The app reads from clipboard as the primary method for better cross-platform compatibility.
 
 ## Linux: Electron sandbox
 

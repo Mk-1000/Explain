@@ -49,3 +49,4 @@ coverage/
 
 # Optional: local config overrides (if you add any)
 *.local.*
+/docs

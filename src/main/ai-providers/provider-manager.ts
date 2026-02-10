@@ -62,28 +62,119 @@ class ProviderManagerClass {
       )
       .sort((a, b) => a.priority - b.priority)
       .map((c) => c.name);
-    let lastError: Error | null = null;
+    
+    if (ordered.length === 0) {
+      throw new Error('No configured providers available. Please add and enable at least one AI provider in Settings.');
+    }
+
+    const errors: Array<{ provider: string; error: Error; timestamp: number }> = [];
+    const startTime = Date.now();
+
     for (const name of ordered) {
       const provider = this.providers.get(name);
-      if (!provider) continue;
-      const key = ConfigManager.getProviderApiKey(name);
-      if (name !== 'Ollama (Local)' && !key) continue;
-      if (name === 'Ollama (Local)') {
-        (provider as unknown as OllamaProvider).configure('');
-      } else {
-        (provider as unknown as { configure(apiKey: string, model?: string): void }).configure(
-          key,
-          config.find((c) => c.name === name)?.model
-        );
+      if (!provider) {
+        errors.push({
+          provider: name,
+          error: new Error('Provider not found'),
+          timestamp: Date.now(),
+        });
+        continue;
       }
-      if (!provider.isConfigured()) continue;
+
+      const key = ConfigManager.getProviderApiKey(name);
+      if (name !== 'Ollama (Local)' && !key) {
+        errors.push({
+          provider: name,
+          error: new Error('API key not configured'),
+          timestamp: Date.now(),
+        });
+        continue;
+      }
+
       try {
-        return await provider.enhance(text, options);
+        // Configure provider
+        if (name === 'Ollama (Local)') {
+          (provider as unknown as OllamaProvider).configure('');
+        } else {
+          (provider as unknown as { configure(apiKey: string, model?: string): void }).configure(
+            key,
+            config.find((c) => c.name === name)?.model
+          );
+        }
+
+        if (!provider.isConfigured()) {
+          errors.push({
+            provider: name,
+            error: new Error('Provider not properly configured'),
+            timestamp: Date.now(),
+          });
+          continue;
+        }
+
+        // Attempt enhancement with timeout
+        const result = await Promise.race([
+          provider.enhance(text, options),
+          new Promise<EnhancementResult>((_, reject) =>
+            setTimeout(() => reject(new Error('Request timeout')), 60000)
+          ),
+        ]);
+
+        // Success - return result with error context for logging
+        if (errors.length > 0) {
+          console.warn('Enhancement succeeded after fallback attempts:', {
+            successfulProvider: name,
+            failedProviders: errors.map((e) => e.provider),
+            textLength: text.length,
+            enhancementType: options.type,
+          });
+        }
+
+        return result;
       } catch (err) {
-        lastError = err instanceof Error ? err : new Error(String(err));
+        const error = err instanceof Error ? err : new Error(String(err));
+        errors.push({
+          provider: name,
+          error,
+          timestamp: Date.now(),
+        });
+
+        // Log error for debugging
+        console.warn(`Provider ${name} failed:`, {
+          error: error.message,
+          textLength: text.length,
+          enhancementType: options.type,
+        });
+
+        // Continue to next provider
+        continue;
       }
     }
-    throw lastError ?? new Error('No configured providers available');
+
+    // All providers failed - throw comprehensive error
+    const processingTime = Date.now() - startTime;
+    const errorMessages = errors.map((e) => `${e.provider}: ${e.error.message}`).join('; ');
+    
+    const finalError = new Error(
+      `All ${ordered.length} provider(s) failed. ${errorMessages}`
+    ) as Error & {
+      code?: string;
+      errors?: Array<{ provider: string; error: string; timestamp: number }>;
+      textLength?: number;
+      enhancementType?: string;
+      processingTime?: number;
+    };
+
+    finalError.code = 'ALL_PROVIDERS_FAILED';
+    finalError.errors = errors.map((e) => ({
+      provider: e.provider,
+      error: e.error.message,
+      timestamp: e.timestamp,
+    }));
+    finalError.textLength = text.length;
+    finalError.enhancementType = options.type;
+    finalError.processingTime = processingTime;
+
+    throw finalError;
   }
 }
 

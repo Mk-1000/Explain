@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Suggestion } from '@shared/types';
+import { getWordDiff, getDiffStats, type DiffPart } from '../../utils/text-diff';
 import './styles.css';
 
 interface SuggestionPopupProps {
@@ -25,6 +26,7 @@ export default function SuggestionPopup({
   emptyStateMessage,
 }: SuggestionPopupProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showDiff, setShowDiff] = useState(false);
 
   useEffect(() => {
     setSelectedIndex(0);
@@ -105,11 +107,32 @@ export default function SuggestionPopup({
               >
                 <div className="suggestion-header">
                   <span className="suggestion-type">{suggestion.type}</span>
-                  <span className="confidence">
-                    {Math.round((suggestion.confidence ?? 1) * 100)}%
-                  </span>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {originalText && (
+                      <button
+                        type="button"
+                        className="btn-diff-toggle"
+                        onClick={() => setShowDiff(!showDiff)}
+                        title="Toggle diff view"
+                      >
+                        {showDiff ? '📊' : '🔍'} Diff
+                      </button>
+                    )}
+                    <span className="confidence">
+                      {Math.round((suggestion.confidence ?? 1) * 100)}%
+                    </span>
+                  </div>
                 </div>
-                <p className="suggestion-text">{suggestion.text}</p>
+                {showDiff && originalText ? (
+                  <DiffView original={originalText} enhanced={suggestion.text} />
+                ) : (
+                  <p className="suggestion-text">{suggestion.text}</p>
+                )}
+                {originalText && showDiff && (
+                  <div className="diff-stats">
+                    <DiffStatsDisplay original={originalText} enhanced={suggestion.text} />
+                  </div>
+                )}
                 <div className="suggestion-actions">
                   <button
                     type="button"
@@ -141,6 +164,56 @@ export default function SuggestionPopup({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Diff view component showing word-level changes.
+ */
+function DiffView({ original, enhanced }: { original: string; enhanced: string }) {
+  const diffParts = getWordDiff(original, enhanced);
+
+  return (
+    <div className="diff-view">
+      {diffParts.map((part, index) => {
+        if (part.added) {
+          return (
+            <span key={index} className="diff-added">
+              {part.value}
+            </span>
+          );
+        }
+        if (part.removed) {
+          return (
+            <span key={index} className="diff-removed">
+              {part.value}
+            </span>
+          );
+        }
+        return <span key={index}>{part.value}</span>;
+      })}
+    </div>
+  );
+}
+
+/**
+ * Display diff statistics (additions, deletions, word count).
+ */
+function DiffStatsDisplay({ original, enhanced }: { original: string; enhanced: string }) {
+  const stats = getDiffStats(original, enhanced);
+
+  return (
+    <div className="diff-stats-container">
+      <span className="diff-stat">
+        <strong>+{stats.additions}</strong> added
+      </span>
+      <span className="diff-stat">
+        <strong>-{stats.deletions}</strong> removed
+      </span>
+      <span className="diff-stat">
+        <strong>{stats.wordCount}</strong> words
+      </span>
     </div>
   );
 }

@@ -33,15 +33,61 @@ export function registerIpcHandlers(
   });
 
   ipcMain.handle('ai:enhance', async (_event, text: string, options: Record<string, unknown>) => {
-    if (PrivacyManager.containsSensitiveData(text)) {
-      return { error: 'Text contains sensitive information', code: 'SENSITIVE_DATA' };
+    const startTime = Date.now();
+    
+    // Validate input
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return {
+        error: 'Text is empty or invalid',
+        code: 'INVALID_INPUT',
+        textLength: 0,
+        processingTime: Date.now() - startTime,
+      };
     }
+
+    // Check for sensitive data
+    if (PrivacyManager.containsSensitiveData(text)) {
+      return {
+        error: 'Text contains sensitive information. Please remove emails, phone numbers, or other sensitive data.',
+        code: 'SENSITIVE_DATA',
+        textLength: text.length,
+        processingTime: Date.now() - startTime,
+      };
+    }
+
     try {
       const result = await ProviderManager.enhanceWithFallback(text, options as unknown as EnhancementOptions);
       return result;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      return { error: message, code: 'ENHANCEMENT_FAILED' };
+      const error = err instanceof Error ? err : new Error(String(err));
+      const processingTime = Date.now() - startTime;
+
+      // Extract detailed error information if available
+      const errorResponse: {
+        error: string;
+        code: string;
+        textLength?: number;
+        enhancementType?: string;
+        processingTime?: number;
+        errors?: Array<{ provider: string; error: string }>;
+      } = {
+        error: error.message,
+        code: (error as { code?: string }).code || 'ENHANCEMENT_FAILED',
+        textLength: text.length,
+        enhancementType: options.type as string,
+        processingTime,
+      };
+
+      // Include provider-specific errors if available
+      const errorWithDetails = error as unknown as { errors?: Array<{ provider: string; error: string }> };
+      if (errorWithDetails.errors) {
+        errorResponse.errors = errorWithDetails.errors;
+      }
+
+      // Log error for debugging
+      console.error('Enhancement failed:', errorResponse);
+
+      return errorResponse;
     }
   });
 
@@ -111,14 +157,39 @@ export function registerIpcHandlers(
   ipcMain.handle('clipboard:read', () => clipboard.readText());
 
   ipcMain.handle('clipboard:write-and-paste', (_event, text: string) => {
+    // Write enhanced text to clipboard (always succeeds)
     clipboard.writeText(text);
+    
+    // Attempt to simulate paste using platform-specific native tools
+    // Note: RobotJS has been removed for better cross-platform compatibility
+    // Text is always available in clipboard for manual paste (Ctrl+V / Cmd+V)
+    
     try {
-      const robot = require('robotjs');
-      const modifier = process.platform === 'darwin' ? 'command' : 'control';
-      robot.keyTap('v', [modifier]);
-    } catch {
-      // ignore
+      const { exec } = require('child_process');
+      
+      if (process.platform === 'linux') {
+        // Try xdotool (common on Linux, but not required)
+        exec('xdotool key ctrl+v', { timeout: 1000 }, () => {
+          // Ignore errors - text is in clipboard regardless
+        });
+      } else if (process.platform === 'darwin') {
+        // Use AppleScript for macOS
+        exec('osascript -e \'tell application "System Events" to keystroke "v" using command down\'', 
+          { timeout: 1000 }, () => {
+          // Ignore errors - text is in clipboard regardless
+        });
+      } else if (process.platform === 'win32') {
+        // Use PowerShell for Windows (requires System.Windows.Forms)
+        exec('powershell -command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\'^v\')"', 
+          { timeout: 1000 }, () => {
+          // Ignore errors - text is in clipboard regardless
+        });
+      }
+    } catch (error) {
+      // Graceful fallback: text is in clipboard, user can paste manually
+      // This is expected on systems without the required tools
     }
+    
     closePopup();
     return true;
   });
