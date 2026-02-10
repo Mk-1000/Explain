@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '../../hooks/useSettings';
+import { DEFAULT_SHORTCUT } from '@shared/constants';
 import ProvidersTab from './ProvidersTab';
 import ShortcutsTab from './ShortcutsTab';
 import PreferencesTab from './PreferencesTab';
@@ -16,12 +17,12 @@ export default function Settings() {
   const { config, isLoading, saveSettings, updateProvider, updateShortcut, reload } =
     useSettings();
   const [activeTab, setActiveTab] = useState<TabId>('providers');
-  const [shortcutInput, setShortcutInput] = useState('');
+  const [shortcutInput, setShortcutInput] = useState(DEFAULT_SHORTCUT);
   const [excludedApps, setExcludedApps] = useState<string[]>([]);
 
   useEffect(() => {
     if (config) {
-      setShortcutInput(config.shortcut);
+      setShortcutInput(config.shortcut ?? DEFAULT_SHORTCUT);
       setExcludedApps(config.excludedApps ?? []);
     }
   }, [config]);
@@ -102,9 +103,9 @@ export default function Settings() {
         )}
         {activeTab === 'shortcuts' && (
           <ShortcutsTab
-            shortcut={shortcutInput}
+            shortcut={shortcutInput || DEFAULT_SHORTCUT}
             onShortcutChange={setShortcutInput}
-            onSave={async () => updateShortcut(shortcutInput)}
+            onSave={async () => updateShortcut(shortcutInput || DEFAULT_SHORTCUT)}
           />
         )}
         {activeTab === 'preferences' && (

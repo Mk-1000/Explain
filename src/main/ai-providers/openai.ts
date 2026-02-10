@@ -11,7 +11,7 @@ export class OpenAIProvider implements AIProvider {
   name = 'OpenAI';
   private client: OpenAI | null = null;
   private apiKey = '';
-  private model = 'gpt-4-turbo-preview';
+  private model = 'gpt-4o-mini';
 
   configure(apiKey: string, model?: string): void {
     this.apiKey = apiKey;

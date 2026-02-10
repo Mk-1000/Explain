@@ -61,6 +61,18 @@ Output is in `release/`.
 
 - **robotjs**: For text selection (simulated Ctrl/C) and paste (Ctrl+V). On Linux you may need: `libxtst-dev`, `libpng++-dev`.
 
+**Keyboard shortcut:** If the shortcut seems to do nothing, select some text first or copy text to the clipboard. On Linux, selection capture can fail; the app will then open the popup with your clipboard content (or empty) so you can paste.
+
+## Linux: Electron sandbox
+
+If Electron fails to start with a sandbox error (`chrome-sandbox` / SUID), either:
+
+- **Option A:** Run with the sandbox disabled (development only):  
+  `npm run dev:linux`
+- **Option B:** Fix permissions once (then use `npm run dev` as usual):  
+  `sudo chown root node_modules/electron/dist/chrome-sandbox`  
+  `sudo chmod 4755 node_modules/electron/dist/chrome-sandbox`
+
 ## Notes on `npm install`
 
 **Deprecation warnings**  

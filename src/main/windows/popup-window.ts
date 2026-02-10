@@ -24,7 +24,7 @@ export class PopupWindowManager {
     if (x < display.workArea.x) x = display.workArea.x;
     if (y < display.workArea.y) y = display.workArea.y;
 
-    const preloadPath = path.join(__dirname, '../preload/index.js');
+    const preloadPath = path.join(__dirname, '../../preload/index.js');
     this.window = new BrowserWindow({
       width: popupWidth,
       height: popupHeight,
@@ -48,7 +48,8 @@ export class PopupWindowManager {
     if (process.env.NODE_ENV === 'development') {
       this.window.loadURL('http://localhost:5173/popup.html');
     } else {
-      this.window.loadFile(path.join(__dirname, '../../renderer/popup.html'));
+      const packagedPopup = path.join(process.resourcesPath, 'app.asar', 'dist', 'renderer', 'popup.html');
+      this.window.loadFile(packagedPopup);
     }
 
     this.window.once('ready-to-show', () => {

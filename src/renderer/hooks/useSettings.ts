@@ -42,7 +42,27 @@ export function useSettings() {
     async (name: string, providerConfig: Partial<{ apiKey: string; model: string; enabled: boolean; priority: number }>) => {
       try {
         await window.electronAPI.saveProvider(name, providerConfig);
-        await loadSettings();
+        let merged = false;
+        setConfig((prev) => {
+          if (!prev) return prev;
+          const providers = [...(prev.providers ?? [])];
+          const idx = providers.findIndex((p) => p.name === name);
+          if (idx >= 0) {
+            providers[idx] = { ...providers[idx], ...providerConfig };
+          } else {
+            const base = DEFAULT_APP_CONFIG.providers.find((p) => p.name === name);
+            providers.push({
+              ...(base ?? { name, apiKey: '', model: '', enabled: false, priority: providers.length + 1 }),
+              ...providerConfig,
+              name,
+            });
+          }
+          merged = true;
+          return { ...prev, providers };
+        });
+        if (!merged) {
+          await loadSettings();
+        }
         return true;
       } catch (err) {
         console.error('Failed to update provider:', err);

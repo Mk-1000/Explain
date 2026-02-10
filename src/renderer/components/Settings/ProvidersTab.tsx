@@ -11,11 +11,90 @@ interface ProvidersTabProps {
 export default function ProvidersTab({ providers, updateProvider }: ProvidersTabProps) {
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, boolean | null>>({});
+  /** Local API key drafts; save to backend on blur so paste doesn't get cleared by refetch. */
+  const [apiKeyDraft, setApiKeyDraft] = useState<Record<string, string>>({});
+  const [modelDraft, setModelDraft] = useState<Record<string, string>>({});
+  const [priorityDraft, setPriorityDraft] = useState<Record<string, string>>({});
+  const [saveStatus, setSaveStatus] = useState<Record<string, 'saving' | 'saved' | 'failed'>>({});
+  const defaultModelForProvider = (name: string): string =>
+    name === 'OpenAI'
+      ? 'gpt-4o-mini'
+      : name === 'OpenRouter'
+        ? 'openai/gpt-4o-mini'
+        : name === 'Anthropic'
+          ? 'claude-3-sonnet-20240229'
+          : 'llama2';
+
+  const persistApiKeyDraft = async (name: string): Promise<boolean> => {
+    const draftValue = apiKeyDraft[name];
+    if (draftValue === undefined) {
+      return true;
+    }
+    setSaveStatus((prev) => ({ ...prev, [name]: 'saving' }));
+    const ok = await updateProvider(name, {
+      apiKey: draftValue,
+      ...(draftValue.trim() ? { enabled: true } : {}),
+    });
+    if (ok) {
+      setSaveStatus((prev) => ({ ...prev, [name]: 'saved' }));
+      setApiKeyDraft((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+      return true;
+    }
+    setSaveStatus((prev) => ({ ...prev, [name]: 'failed' }));
+    return false;
+  };
+
+  const persistModelDraft = async (name: string): Promise<boolean> => {
+    const draftValue = modelDraft[name];
+    if (draftValue === undefined) return true;
+    setSaveStatus((prev) => ({ ...prev, [name]: 'saving' }));
+    const ok = await updateProvider(name, { model: draftValue.trim() || defaultModelForProvider(name) });
+    if (ok) {
+      setSaveStatus((prev) => ({ ...prev, [name]: 'saved' }));
+      setModelDraft((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+      return true;
+    }
+    setSaveStatus((prev) => ({ ...prev, [name]: 'failed' }));
+    return false;
+  };
+
+  const persistPriorityDraft = async (name: string, currentPriority: number): Promise<boolean> => {
+    const draftValue = priorityDraft[name];
+    if (draftValue === undefined) return true;
+    const parsed = Number.parseInt(draftValue, 10);
+    const priority = Number.isFinite(parsed) ? Math.max(1, Math.min(10, parsed)) : currentPriority;
+    setSaveStatus((prev) => ({ ...prev, [name]: 'saving' }));
+    const ok = await updateProvider(name, { priority });
+    if (ok) {
+      setSaveStatus((prev) => ({ ...prev, [name]: 'saved' }));
+      setPriorityDraft((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+      return true;
+    }
+    setSaveStatus((prev) => ({ ...prev, [name]: 'failed' }));
+    return false;
+  };
 
   const handleTest = async (name: string) => {
     setTesting(name);
     setTestResult((r) => ({ ...r, [name]: null }));
     try {
+      const persisted = await persistApiKeyDraft(name);
+      if (!persisted) {
+        setTestResult((r) => ({ ...r, [name]: false }));
+        return;
+      }
       const res = await window.electronAPI.testProvider(name);
       setTestResult((r) => ({ ...r, [name]: res.success }));
     } finally {
@@ -28,7 +107,7 @@ export default function ProvidersTab({ providers, updateProvider }: ProvidersTab
     : PROVIDER_NAMES.map((name) => ({
         name,
         apiKey: '',
-        model: name === 'OpenAI' ? 'gpt-4-turbo-preview' : name === 'Ollama (Local)' ? 'llama2' : name === 'Anthropic' ? 'claude-3-sonnet-20240229' : 'anthropic/claude-3-sonnet',
+        model: defaultModelForProvider(name),
         enabled: false,
         priority: PROVIDER_NAMES.indexOf(name) + 1,
       }));
@@ -37,7 +116,7 @@ export default function ProvidersTab({ providers, updateProvider }: ProvidersTab
     <div className="settings-section">
       <h3>Configure AI Providers</h3>
       <p className="section-description">
-        Add your API keys and enable providers. Lower priority number is tried first.
+        Add your API keys and enable providers. Lower priority number is tried first. Enter an API key and check the box to enable; at least one provider must be enabled.
       </p>
       {list.map((provider) => (
         <div key={provider.name} className="provider-card">
@@ -62,6 +141,11 @@ export default function ProvidersTab({ providers, updateProvider }: ProvidersTab
             </button>
             {testResult[provider.name] === true && <span className="test-ok">OK</span>}
             {testResult[provider.name] === false && <span className="test-fail">Failed</span>}
+            {saveStatus[provider.name] === 'saving' && <span className="test-ok">Saving...</span>}
+            {saveStatus[provider.name] === 'saved' && <span className="test-ok">Saved</span>}
+            {saveStatus[provider.name] === 'failed' && (
+              <span className="test-fail">Save failed</span>
+            )}
           </div>
           {provider.name !== 'Ollama (Local)' && (
             <div className="provider-fields">
@@ -69,10 +153,13 @@ export default function ProvidersTab({ providers, updateProvider }: ProvidersTab
                 <label>API Key</label>
                 <input
                   type="password"
-                  value={provider.apiKey}
+                  value={apiKeyDraft[provider.name] ?? provider.apiKey ?? ''}
                   onChange={(e) =>
-                    updateProvider(provider.name, { apiKey: e.target.value })
+                    setApiKeyDraft((prev) => ({ ...prev, [provider.name]: e.target.value }))
                   }
+                  onBlur={async () => {
+                    await persistApiKeyDraft(provider.name);
+                  }}
                   placeholder="Enter API key"
                 />
               </div>
@@ -83,10 +170,13 @@ export default function ProvidersTab({ providers, updateProvider }: ProvidersTab
               <label>Model</label>
               <input
                 type="text"
-                value={provider.model}
+                value={modelDraft[provider.name] ?? provider.model}
                 onChange={(e) =>
-                  updateProvider(provider.name, { model: e.target.value })
+                  setModelDraft((prev) => ({ ...prev, [provider.name]: e.target.value }))
                 }
+                onBlur={async () => {
+                  await persistModelDraft(provider.name);
+                }}
                 placeholder="Model name"
               />
             </div>
@@ -96,12 +186,13 @@ export default function ProvidersTab({ providers, updateProvider }: ProvidersTab
                 type="number"
                 min={1}
                 max={10}
-                value={provider.priority}
+                value={priorityDraft[provider.name] ?? String(provider.priority)}
                 onChange={(e) =>
-                  updateProvider(provider.name, {
-                    priority: parseInt(e.target.value, 10) || 1,
-                  })
+                  setPriorityDraft((prev) => ({ ...prev, [provider.name]: e.target.value }))
                 }
+                onBlur={async () => {
+                  await persistPriorityDraft(provider.name, provider.priority);
+                }}
               />
             </div>
           </div>

@@ -88,6 +88,29 @@
   }
 }
 
+.empty-state {
+  padding: 16px 20px;
+  background: #f8f8f8;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #666;
+}
+
+@media (prefers-color-scheme: dark) {
+  .empty-state {
+    background: #2a2a2a;
+    border-bottom-color: #333;
+  }
+  .empty-state p {
+    color: #999;
+  }
+}
+
 .original-text label {
   display: block;
   font-size: 12px;

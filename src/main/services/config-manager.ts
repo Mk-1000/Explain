@@ -35,7 +35,18 @@ class ConfigManagerClass {
     if (idx >= 0) {
       providers[idx] = { ...providers[idx], ...config };
     } else {
-      providers.push({ ...config, name } as ProviderConfig);
+      const defaults = DEFAULT_APP_CONFIG.providers.find((p) => p.name === name);
+      providers.push({
+        ...(defaults ?? {
+          name,
+          apiKey: '',
+          model: '',
+          enabled: false,
+          priority: providers.length + 1,
+        }),
+        ...config,
+        name,
+      });
     }
     this.store.set('config.providers', providers);
   }

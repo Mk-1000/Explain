@@ -9,7 +9,7 @@ import type {
 export class OpenRouterProvider implements AIProvider {
   name = 'OpenRouter';
   private apiKey = '';
-  private model = 'anthropic/claude-3-sonnet';
+  private model = 'openai/gpt-4o-mini';
   private baseURL = 'https://openrouter.ai/api/v1';
 
   configure(apiKey: string, model?: string): void {
@@ -69,8 +69,15 @@ export class OpenRouterProvider implements AIProvider {
         processingTime: Date.now() - startTime,
       };
     } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: unknown }; message?: string };
+      const status = axiosErr?.response?.status;
+      const details =
+        typeof axiosErr?.response?.data === 'string'
+          ? axiosErr.response.data
+          : JSON.stringify(axiosErr?.response?.data ?? {});
       const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(`OpenRouter enhancement failed: ${msg}`);
+      const statusText = status ? `status ${status}` : msg;
+      throw new Error(`OpenRouter enhancement failed: ${statusText}${details && details !== '{}' ? ` - ${details}` : ''}`);
     }
   }
 

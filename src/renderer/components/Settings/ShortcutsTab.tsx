@@ -18,10 +18,13 @@ export default function ShortcutsTab({
           type="text"
           value={shortcut}
           onChange={(e) => onShortcutChange(e.target.value)}
-          placeholder="e.g. CommandOrControl+Shift+Space"
+          placeholder="e.g. CommandOrControl+Alt+E"
         />
         <p className="help-text">
-          Use: CommandOrControl, Alt, Shift. Example: CommandOrControl+Shift+Space
+          Use: CommandOrControl, Alt, Shift. Example: CommandOrControl+Alt+E
+        </p>
+        <p className="help-text">
+          Don&apos;t trigger the shortcut while this field is focused, or the app will try to enhance this text.
         </p>
       </div>
       <button type="button" className="btn-primary" onClick={() => onSave()}>

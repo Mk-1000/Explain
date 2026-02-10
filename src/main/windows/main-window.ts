@@ -2,7 +2,7 @@ import { BrowserWindow } from 'electron';
 import path from 'path';
 
 export function createMainWindow(): BrowserWindow {
-  const preloadPath = path.join(__dirname, '../preload/index.js');
+  const preloadPath = path.join(__dirname, '../../preload/index.js');
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 700,
@@ -21,7 +21,8 @@ export function createMainWindow(): BrowserWindow {
     mainWindow.loadURL('http://localhost:5173/');
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../../renderer/index.html'));
+    const packagedIndex = path.join(process.resourcesPath, 'app.asar', 'dist', 'renderer', 'index.html');
+    mainWindow.loadFile(packagedIndex);
   }
 
   return mainWindow;

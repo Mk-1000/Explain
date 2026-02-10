@@ -2,11 +2,17 @@
   "name": "ai-text-enhancer",
   "version": "1.0.0",
   "description": "AI-powered text enhancement desktop app",
-  "main": "dist/main/index.js",
+  "author": {
+    "name": "hamdi mokni",
+    "email": "hamdimokni712@gmail.com"
+  },
+  "main": "dist/main/main/index.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
     "dev:vite": "vite",
-    "dev:electron": "wait-on http://localhost:5173 && tsc -p tsconfig.main.json && electron .",
+    "dev:electron": "wait-on http://localhost:5173 && tsc -p tsconfig.main.json && ELECTRON_DISABLE_SANDBOX=1 NODE_ENV=development electron .",
+    "dev:electron:linux": "wait-on http://localhost:5173 && tsc -p tsconfig.main.json && ELECTRON_DISABLE_SANDBOX=1 NODE_ENV=development electron .",
+    "dev:linux": "concurrently \"npm run dev:vite\" \"npm run dev:electron:linux\"",
     "build": "npm run build:renderer && npm run build:main",
     "build:renderer": "vite build",
     "build:main": "tsc -p tsconfig.main.json",

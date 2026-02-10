@@ -11,6 +11,7 @@ interface SuggestionPopupProps {
   onCopy: (text: string) => void;
   isLoading: boolean;
   error: string | null;
+  emptyStateMessage?: string | null;
 }
 
 export default function SuggestionPopup({
@@ -21,6 +22,7 @@ export default function SuggestionPopup({
   onCopy,
   isLoading,
   error,
+  emptyStateMessage,
 }: SuggestionPopupProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -65,10 +67,16 @@ export default function SuggestionPopup({
         </button>
       </div>
 
-      <div className="original-text">
-        <label>Original:</label>
-        <p>{originalText}</p>
-      </div>
+      {emptyStateMessage ? (
+        <div className="empty-state">
+          <p>{emptyStateMessage}</p>
+        </div>
+      ) : (
+        <div className="original-text">
+          <label>Original:</label>
+          <p>{originalText}</p>
+        </div>
+      )}
 
       {error && (
         <div className="error-state">
