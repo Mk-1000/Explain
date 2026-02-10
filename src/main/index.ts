@@ -21,6 +21,9 @@ let mainWindow: ReturnType<typeof createMainWindow> | null = null;
 let tray: Tray | null = null;
 const popupManager = new PopupWindowManager();
 
+// Check if app was launched with --hidden flag
+const launchedHidden = process.argv.includes('--hidden');
+
 if (process.platform === 'linux') {
   app.commandLine.appendSwitch('no-sandbox');
 }
@@ -28,8 +31,11 @@ if (process.platform === 'linux') {
 function createMain(): void {
   mainWindow = createMainWindow();
   mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
-    mainWindow?.focus();
+    // Only show window if not launched hidden
+    if (!launchedHidden) {
+      mainWindow?.show();
+      mainWindow?.focus();
+    }
   });
 
   mainWindow.on('close', (e) => {
@@ -65,8 +71,13 @@ function normalizeShortcut(input: string): string {
 
 function registerGlobalShortcut(accelerator: string): void {
   if (!app.isReady()) return;
+  
   const normalized = normalizeShortcut(accelerator);
   globalShortcut.unregisterAll();
+  
+  // Enhanced logging
+  console.log(`[Shortcut] Attempting to register: ${normalized}`);
+  
   const onShortcutTriggered = async () => {
     try {
       // Get text with enhanced metadata
@@ -138,27 +149,69 @@ function registerGlobalShortcut(accelerator: string): void {
   };
 
   const success = globalShortcut.register(normalized, onShortcutTriggeredWrapper);
+  
   if (!success) {
-    console.error(`Failed to register shortcut: ${normalized}`);
+    console.error(`[Shortcut] Failed to register: ${normalized}`);
+    
+    // Show user-friendly notification
+    if (mainWindow) {
+      mainWindow.webContents.send('shortcut-registration-failed', {
+        shortcut: normalized,
+        reason: 'Shortcut may be in use by another application'
+      });
+    }
+    
+    // Try fallback
     if (normalized !== DEFAULT_SHORTCUT) {
       globalShortcut.unregisterAll();
-      const fallbackSuccess = globalShortcut.register(DEFAULT_SHORTCUT, onShortcutTriggeredWrapper);
+      const fallbackSuccess = globalShortcut.register(
+        DEFAULT_SHORTCUT, 
+        onShortcutTriggeredWrapper
+      );
+      
       if (fallbackSuccess) {
         ConfigManager.setShortcut(DEFAULT_SHORTCUT);
-        dialog.showErrorBox(
-          'Shortcut fallback',
-          `Could not register "${normalized}". Switched to default "${DEFAULT_SHORTCUT}".`
-        );
+        
+        // Notify user of fallback
+        dialog.showMessageBox({
+          type: 'warning',
+          title: 'Shortcut Conflict',
+          message: `Could not register "${normalized}". Using default "${DEFAULT_SHORTCUT}" instead.`,
+          buttons: ['OK']
+        });
         return;
       }
     }
+    
     dialog.showErrorBox('Shortcut conflict', 'Could not register the keyboard shortcut. It may be used by another app.');
+  } else {
+    console.log(`[Shortcut] Successfully registered: ${normalized}`);
+  }
+}
+
+function setupAutoLaunch(): void {
+  const config = ConfigManager.getAll();
+  
+  if (app.setLoginItemSettings) {
+    app.setLoginItemSettings({
+      openAtLogin: config.startAtLogin ?? false,
+      openAsHidden: true, // Start minimized to tray
+      path: process.execPath,
+      args: ['--hidden']
+    });
+    
+    console.log(`[AutoLaunch] Auto-launch ${config.startAtLogin ? 'enabled' : 'disabled'}`);
+  } else {
+    console.warn('[AutoLaunch] setLoginItemSettings not available on this platform');
   }
 }
 
 function initializeApp(): void {
   const config = ConfigManager.getAll();
   PrivacyManager.setExcludedApps(config.excludedApps ?? []);
+
+  // Setup auto-launch
+  setupAutoLaunch();
 
   // Log platform capabilities at startup
   const caps = ShortcutManager.getPlatformCapabilities();

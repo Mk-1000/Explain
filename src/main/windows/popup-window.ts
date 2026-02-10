@@ -68,11 +68,24 @@ export class PopupWindowManager {
     });
 
     this.window.on('blur', () => {
+      // Increased timeout for better UX
       setTimeout(() => {
         if (this.window && !this.window.isFocused()) {
-          this.window.close();
+          // Check if mouse is still over the window
+          const bounds = this.window.getBounds();
+          const cursorPosition = screen.getCursorScreenPoint();
+          
+          const isMouseOver = 
+            cursorPosition.x >= bounds.x &&
+            cursorPosition.x <= bounds.x + bounds.width &&
+            cursorPosition.y >= bounds.y &&
+            cursorPosition.y <= bounds.y + bounds.height;
+          
+          if (!isMouseOver) {
+            this.window.close();
+          }
         }
-      }, 200);
+      }, 500); // Increased from 200ms to 500ms
     });
 
     this.window.on('closed', () => {

@@ -32,8 +32,16 @@ export interface ElectronAPI {
   }) => void) => void;
   removeAllListeners: (channel: string) => void;
   getHistory: () => Promise<import('./types').HistoryItem[]>;
-  addHistory: (item: { original: string; enhanced: string; type: string; provider: string }) => Promise<boolean>;
+  searchHistory: (query: string) => Promise<import('./types').HistoryItem[]>;
+  filterHistory: (filters: { type?: string; provider?: string; dateFrom?: number; dateTo?: number; favorite?: boolean }) => Promise<import('./types').HistoryItem[]>;
+  addHistory: (item: { original: string; enhanced: string; type: string; provider: string; processingTime?: number; tokensUsed?: number }) => Promise<boolean>;
+  updateHistory: (id: string, updates: Partial<import('./types').HistoryItem>) => Promise<boolean>;
+  deleteHistory: (id: string) => Promise<boolean>;
+  toggleFavorite: (id: string) => Promise<boolean>;
   clearHistory: () => Promise<boolean>;
+  getHistoryStats: () => Promise<import('./types').HistoryStats>;
+  exportHistory: (format: 'json' | 'csv') => Promise<{ success: boolean; path?: string }>;
+  updateAutoLaunch: (enabled: boolean) => Promise<boolean>;
 }
 
 declare global {

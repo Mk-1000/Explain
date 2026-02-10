@@ -73,23 +73,47 @@ npm run package:mac
 
 ### Building from Linux for Windows
 
-To build Windows installers from Linux, you need:
+To build Windows installers from Linux, you need Wine (for Windows build tools):
 
-1. **Install Wine** (for Windows build tools):
-   ```bash
-   # Ubuntu/Debian
-   sudo apt-get install wine64 wine32
-   
-   # Fedora
-   sudo dnf install wine
-   ```
+**Step 1: Install Wine with 32-bit support**
+```bash
+# Enable multiarch support
+sudo dpkg --add-architecture i386
+sudo apt-get update
 
-2. **Build Windows installer**:
-   ```bash
-   npm run package:win
-   ```
+# Install wine32:i386 (required for code signing tools)
+sudo apt-get install wine32:i386
 
-   Electron-builder will automatically download Windows build tools via Wine.
+# Or install wine-stable (includes both 32-bit and 64-bit)
+sudo apt-get install wine-stable
+```
+
+**Step 2: Rebuild Wine prefix with 32-bit support (if needed)**
+```bash
+# Remove existing Wine prefix (if you have one)
+rm -rf ~/.wine
+
+# Create new 32-bit Wine prefix
+WINEARCH=win32 winecfg
+# Close the winecfg window when it opens
+```
+
+**Step 3: Build Windows installer**
+```bash
+# Skip code signing (configured in electron-builder.yml)
+export CSC_IDENTITY_AUTO_DISCOVERY=false
+
+# Build with 32-bit Wine prefix
+npm run package:win
+```
+
+The build script automatically sets `WINEARCH=win32` to use 32-bit Wine prefix.
+
+**Alternative: If Wine installation fails**
+- Use Docker: `docker run --rm -v ${PWD}:/project -w /project electronuserland/builder:wine bash -c "npm install && npm run package:win"`
+- Or build only portable executable (modify `win.target` to `["portable"]` in electron-builder.yml)
+
+Electron-builder will automatically download Windows build tools via Wine.
 
 ### Building from Windows for Linux
 

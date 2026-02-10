@@ -1,4 +1,5 @@
-import { ipcMain, clipboard } from 'electron';
+import { ipcMain, clipboard, app } from 'electron';
+import path from 'path';
 import type { EnhancementOptions } from '../../shared/types';
 import ConfigManager from '../services/config-manager';
 import ProviderManager from '../ai-providers/provider-manager';
@@ -35,12 +36,24 @@ export function registerIpcHandlers(
   ipcMain.handle('ai:enhance', async (_event, text: string, options: Record<string, unknown>) => {
     const startTime = Date.now();
     
-    // Validate input
+    // Enhanced validation with better error messages
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return {
-        error: 'Please select some text before enhancing',
+        error: 'No text selected. Please select some text and try again.',
         code: 'NO_TEXT_SELECTED',
+        userAction: 'Select text before pressing the shortcut key',
         textLength: 0,
+        processingTime: Date.now() - startTime,
+      };
+    }
+    
+    // Check text length limits
+    if (text.length > 10000) {
+      return {
+        error: 'Selected text is too long (maximum 10,000 characters).',
+        code: 'TEXT_TOO_LONG',
+        userAction: 'Select a shorter portion of text',
+        textLength: text.length,
         processingTime: Date.now() - startTime,
       };
     }
@@ -48,8 +61,9 @@ export function registerIpcHandlers(
     // Check for sensitive data
     if (PrivacyManager.containsSensitiveData(text)) {
       return {
-        error: 'Text contains sensitive information. Please remove emails, phone numbers, or other sensitive data.',
+        error: 'Text contains sensitive information (credit cards, SSN, etc.).',
         code: 'SENSITIVE_DATA',
+        userAction: 'Remove sensitive data from the selection',
         textLength: text.length,
         processingTime: Date.now() - startTime,
       };
@@ -60,36 +74,73 @@ export function registerIpcHandlers(
       return result;
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
-      const processingTime = Date.now() - startTime;
-
-      // Extract detailed error information if available
-      const errorResponse: {
-        error: string;
-        code: string;
-        textLength?: number;
-        enhancementType?: string;
-        processingTime?: number;
-        errors?: Array<{ provider: string; error: string }>;
-      } = {
+      
+      // Enhanced error response
+      const errorResponse = {
         error: error.message,
         code: (error as { code?: string }).code || 'ENHANCEMENT_FAILED',
+        userAction: getUserActionForError(error),
+        troubleshooting: getTroubleshootingSteps(error),
         textLength: text.length,
         enhancementType: options.type as string,
-        processingTime,
+        processingTime: Date.now() - startTime,
       };
-
+      
       // Include provider-specific errors if available
       const errorWithDetails = error as unknown as { errors?: Array<{ provider: string; error: string }> };
       if (errorWithDetails.errors) {
-        errorResponse.errors = errorWithDetails.errors;
+        (errorResponse as { errors?: Array<{ provider: string; error: string }> }).errors = errorWithDetails.errors;
       }
-
-      // Log error for debugging
+      
       console.error('Enhancement failed:', errorResponse);
-
       return errorResponse;
     }
   });
+  
+  // Helper functions for error handling
+  function getUserActionForError(error: Error): string {
+    const message = error.message.toLowerCase();
+    
+    if (message.includes('api key')) {
+      return 'Check your API key in Settings';
+    }
+    if (message.includes('rate limit')) {
+      return 'Wait a moment and try again (rate limit reached)';
+    }
+    if (message.includes('network') || message.includes('timeout')) {
+      return 'Check your internet connection';
+    }
+    if (message.includes('unauthorized')) {
+      return 'Verify your API credentials in Settings';
+    }
+    
+    return 'Try again or check Settings';
+  }
+  
+  function getTroubleshootingSteps(error: Error): string[] {
+    const steps: string[] = [];
+    const message = error.message.toLowerCase();
+    
+    if (message.includes('api key')) {
+      steps.push('Go to Settings > AI Providers');
+      steps.push('Verify your API key is correct');
+      steps.push('Test the connection using the Test button');
+    }
+    
+    if (message.includes('ollama')) {
+      steps.push('Ensure Ollama is running (ollama serve)');
+      steps.push('Check that the model is installed (ollama list)');
+      steps.push('Verify Ollama is accessible at http://localhost:11434');
+    }
+    
+    if (message.includes('network')) {
+      steps.push('Check your internet connection');
+      steps.push('Verify firewall settings');
+      steps.push('Try using a different provider');
+    }
+    
+    return steps;
+  }
 
   ipcMain.handle('ai:test-provider', async (_event, providerName: string) => {
     const provider = ProviderManager.getProvider(providerName);
@@ -195,15 +246,79 @@ export function registerIpcHandlers(
   });
 
   ipcMain.handle('history:get', () => ConfigManager.getHistory());
-  ipcMain.handle('history:add', (_event, item: { original: string; enhanced: string; type: string; provider: string }) => {
+  
+  ipcMain.handle('history:search', (_event, query: string) => 
+    ConfigManager.searchHistory(query)
+  );
+  
+  ipcMain.handle('history:filter', (_event, filters) => 
+    ConfigManager.filterHistory(filters)
+  );
+  
+  ipcMain.handle('history:add', (_event, item: { original: string; enhanced: string; type: string; provider: string; processingTime?: number; tokensUsed?: number }) => {
     ConfigManager.addToHistory({
       ...item,
       timestamp: Date.now(),
     });
     return true;
   });
+  
+  ipcMain.handle('history:update', (_event, id: string, updates) => {
+    ConfigManager.updateHistoryItem(id, updates);
+    return true;
+  });
+  
+  ipcMain.handle('history:delete', (_event, id: string) => {
+    ConfigManager.deleteHistoryItem(id);
+    return true;
+  });
+  
+  ipcMain.handle('history:toggle-favorite', (_event, id: string) => {
+    ConfigManager.toggleFavorite(id);
+    return true;
+  });
+  
   ipcMain.handle('history:clear', () => {
     ConfigManager.clearHistory();
+    return true;
+  });
+  
+  ipcMain.handle('history:get-stats', () => 
+    ConfigManager.getHistoryStats()
+  );
+  
+  ipcMain.handle('history:export', async (_event, format: 'json' | 'csv') => {
+    const { dialog } = require('electron');
+    const fs = require('fs');
+    const data = ConfigManager.exportHistory(format);
+    const filename = `writeup-history-${Date.now()}.${format}`;
+    
+    return dialog.showSaveDialog({
+      title: 'Export History',
+      defaultPath: path.join(app.getPath('downloads'), filename),
+      filters: [
+        format === 'json' 
+          ? { name: 'JSON', extensions: ['json'] }
+          : { name: 'CSV', extensions: ['csv'] }
+      ]
+    }).then((result: { canceled: boolean; filePath?: string }) => {
+      if (!result.canceled && result.filePath) {
+        fs.writeFileSync(result.filePath, data, 'utf8');
+        return { success: true, path: result.filePath };
+      }
+      return { success: false };
+    });
+  });
+  
+  ipcMain.handle('config:update-auto-launch', (_event, enabled: boolean) => {
+    if (app.setLoginItemSettings) {
+      app.setLoginItemSettings({
+        openAtLogin: enabled,
+        openAsHidden: true,
+        path: process.execPath,
+        args: ['--hidden']
+      });
+    }
     return true;
   });
 }

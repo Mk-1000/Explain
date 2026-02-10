@@ -1,10 +1,10 @@
 import Store from 'electron-store';
-import type { AppConfig, ProviderConfig } from '../../shared/types';
+import type { AppConfig, ProviderConfig, HistoryItem, HistoryStats } from '../../shared/types';
 import { DEFAULT_APP_CONFIG } from '../../shared/constants';
 
 interface StoreSchema {
   config: AppConfig;
-  history: Array<{ id: string; timestamp: number; original: string; enhanced: string; type: string; provider: string }>;
+  history: HistoryItem[];
 }
 
 class ConfigManagerClass {
@@ -82,15 +82,186 @@ class ConfigManagerClass {
     this.store.set('config.shortcut', shortcut);
   }
 
-  getHistory(): StoreSchema['history'] {
+  getHistory(): HistoryItem[] {
     return this.store.get('history', []);
   }
 
-  addToHistory(item: Omit<StoreSchema['history'][0], 'id'>): void {
+  addToHistory(item: Omit<HistoryItem, 'id' | 'originalLength' | 'enhancedLength' | 'tags' | 'favorite'>): void {
     const history = this.store.get('history', []);
-    const newItem = { ...item, id: String(Date.now()) };
-    const updated = [newItem, ...history].slice(0, 100);
+    
+    const newItem: HistoryItem = {
+      ...item,
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      originalLength: item.original.length,
+      enhancedLength: item.enhanced.length,
+      favorite: false,
+      tags: this.autoGenerateTags(item),
+    };
+    
+    // Keep last 1000 items instead of 100
+    const updated = [newItem, ...history].slice(0, 1000);
     this.store.set('history', updated);
+  }
+  
+  searchHistory(query: string): HistoryItem[] {
+    const history = this.getHistory();
+    const lowerQuery = query.toLowerCase();
+    
+    return history.filter(item =>
+      item.original.toLowerCase().includes(lowerQuery) ||
+      item.enhanced.toLowerCase().includes(lowerQuery) ||
+      item.tags?.some(tag => tag.toLowerCase().includes(lowerQuery))
+    );
+  }
+  
+  filterHistory(filters: {
+    type?: string;
+    provider?: string;
+    dateFrom?: number;
+    dateTo?: number;
+    favorite?: boolean;
+  }): HistoryItem[] {
+    let history = this.getHistory();
+    
+    if (filters.type) {
+      history = history.filter(item => item.type === filters.type);
+    }
+    
+    if (filters.provider) {
+      history = history.filter(item => item.provider === filters.provider);
+    }
+    
+    if (filters.dateFrom) {
+      history = history.filter(item => item.timestamp >= filters.dateFrom!);
+    }
+    
+    if (filters.dateTo) {
+      history = history.filter(item => item.timestamp <= filters.dateTo!);
+    }
+    
+    if (filters.favorite !== undefined) {
+      history = history.filter(item => item.favorite === filters.favorite);
+    }
+    
+    return history;
+  }
+  
+  toggleFavorite(id: string): void {
+    const history = this.getHistory();
+    const item = history.find(h => h.id === id);
+    
+    if (item) {
+      item.favorite = !item.favorite;
+      this.store.set('history', history);
+    }
+  }
+  
+  updateHistoryItem(id: string, updates: Partial<HistoryItem>): void {
+    const history = this.getHistory();
+    const index = history.findIndex(h => h.id === id);
+    
+    if (index >= 0) {
+      history[index] = { ...history[index], ...updates };
+      this.store.set('history', history);
+    }
+  }
+  
+  deleteHistoryItem(id: string): void {
+    const history = this.getHistory();
+    const updated = history.filter(h => h.id !== id);
+    this.store.set('history', updated);
+  }
+  
+  getHistoryStats(): HistoryStats {
+    const history = this.getHistory();
+    
+    const stats: HistoryStats = {
+      totalEnhancements: history.length,
+      totalCharactersProcessed: history.reduce((sum, item) => 
+        sum + item.originalLength, 0),
+      averageProcessingTime: history.reduce((sum, item) => 
+        sum + (item.processingTime || 0), 0) / (history.length || 1),
+      mostUsedType: '',
+      mostUsedProvider: '',
+      enhancementsByType: {},
+      enhancementsByProvider: {},
+      enhancementsByDate: {},
+    };
+    
+    // Calculate aggregations
+    history.forEach(item => {
+      // By type
+      stats.enhancementsByType[item.type] = 
+        (stats.enhancementsByType[item.type] || 0) + 1;
+      
+      // By provider
+      stats.enhancementsByProvider[item.provider] = 
+        (stats.enhancementsByProvider[item.provider] || 0) + 1;
+      
+      // By date
+      const date = new Date(item.timestamp).toISOString().split('T')[0];
+      stats.enhancementsByDate[date] = 
+        (stats.enhancementsByDate[date] || 0) + 1;
+    });
+    
+    // Find most used
+    stats.mostUsedType = Object.entries(stats.enhancementsByType)
+      .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
+    
+    stats.mostUsedProvider = Object.entries(stats.enhancementsByProvider)
+      .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
+    
+    return stats;
+  }
+  
+  exportHistory(format: 'json' | 'csv' = 'json'): string {
+    const history = this.getHistory();
+    
+    if (format === 'json') {
+      return JSON.stringify(history, null, 2);
+    }
+    
+    // CSV format
+    const headers = [
+      'Timestamp',
+      'Type',
+      'Provider',
+      'Original',
+      'Enhanced',
+      'Original Length',
+      'Enhanced Length',
+      'Processing Time',
+    ].join(',');
+    
+    const rows = history.map(item => [
+      new Date(item.timestamp).toISOString(),
+      item.type,
+      item.provider,
+      `"${item.original.replace(/"/g, '""')}"`,
+      `"${item.enhanced.replace(/"/g, '""')}"`,
+      item.originalLength,
+      item.enhancedLength,
+      item.processingTime || '',
+    ].join(','));
+    
+    return [headers, ...rows].join('\n');
+  }
+  
+  private autoGenerateTags(item: { type: string; provider: string; original: string }): string[] {
+    const tags: string[] = [item.type, item.provider];
+    
+    // Add length-based tags
+    if (item.original.length < 50) tags.push('short');
+    else if (item.original.length < 200) tags.push('medium');
+    else tags.push('long');
+    
+    // Add content-based tags
+    if (/\b(email|e-mail)\b/i.test(item.original)) tags.push('email');
+    if (/\b(meeting|schedule|calendar)\b/i.test(item.original)) tags.push('meeting');
+    if (/\b(code|function|class|const|let|var)\b/i.test(item.original)) tags.push('code');
+    if (/\?\s*$/.test(item.original)) tags.push('question');
+    
+    return tags;
   }
 
   clearHistory(): void {

@@ -27,6 +27,6 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   defaultEnhancementType: 'rephrase',
   showMultipleSuggestions: true,
   enableHistory: true,
-  startAtLogin: false,
+  startAtLogin: true,
   excludedApps: [],
 };

@@ -136,21 +136,23 @@ export default function ProvidersTab({ providers, updateProvider, reload }: Prov
               />
               <h4>{provider.name}</h4>
             </div>
-            <button
-              type="button"
-              className="test-btn"
-              disabled={testing !== null}
-              onClick={() => handleTest(provider.name)}
-            >
-              {testing === provider.name ? 'Testing...' : 'Test'}
-            </button>
-            {testResult[provider.name] === true && <span className="test-ok">OK</span>}
-            {testResult[provider.name] === false && <span className="test-fail">Failed</span>}
-            {saveStatus[provider.name] === 'saving' && <span className="test-ok">Saving...</span>}
-            {saveStatus[provider.name] === 'saved' && <span className="test-ok">Saved</span>}
-            {saveStatus[provider.name] === 'failed' && (
-              <span className="test-fail">Save failed</span>
-            )}
+            <div className="provider-header-right">
+              <button
+                type="button"
+                className="test-btn"
+                disabled={testing !== null}
+                onClick={() => handleTest(provider.name)}
+              >
+                {testing === provider.name ? 'Testing...' : 'Test'}
+              </button>
+              {testResult[provider.name] === true && <span className="test-ok">OK</span>}
+              {testResult[provider.name] === false && <span className="test-fail">Failed</span>}
+              {saveStatus[provider.name] === 'saving' && <span className="test-ok">Saving...</span>}
+              {saveStatus[provider.name] === 'saved' && <span className="test-ok">Saved</span>}
+              {saveStatus[provider.name] === 'failed' && (
+                <span className="test-fail">Save failed</span>
+              )}
+            </div>
           </div>
           {provider.name !== 'Ollama (Local)' && (
             <div className="provider-fields">

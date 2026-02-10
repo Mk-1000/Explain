@@ -30,7 +30,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners(channel);
   },
   getHistory: () => ipcRenderer.invoke('history:get'),
-  addHistory: (item: { original: string; enhanced: string; type: string; provider: string }) =>
+  searchHistory: (query: string) => ipcRenderer.invoke('history:search', query),
+  filterHistory: (filters: { type?: string; provider?: string; dateFrom?: number; dateTo?: number; favorite?: boolean }) =>
+    ipcRenderer.invoke('history:filter', filters),
+  addHistory: (item: { original: string; enhanced: string; type: string; provider: string; processingTime?: number; tokensUsed?: number }) =>
     ipcRenderer.invoke('history:add', item),
+  updateHistory: (id: string, updates: unknown) => ipcRenderer.invoke('history:update', id, updates),
+  deleteHistory: (id: string) => ipcRenderer.invoke('history:delete', id),
+  toggleFavorite: (id: string) => ipcRenderer.invoke('history:toggle-favorite', id),
   clearHistory: () => ipcRenderer.invoke('history:clear'),
+  getHistoryStats: () => ipcRenderer.invoke('history:get-stats'),
+  exportHistory: (format: 'json' | 'csv') => ipcRenderer.invoke('history:export', format),
+  updateAutoLaunch: (enabled: boolean) => ipcRenderer.invoke('config:update-auto-launch', enabled),
 });

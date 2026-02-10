@@ -102,6 +102,7 @@ export default function PopupApp() {
   const [error, setError] = useState<string | null>(null);
   const [emptyStateMessage, setEmptyStateMessage] = useState<string | null>(null);
   const [lastProvider, setLastProvider] = useState<string>('AI');
+  const [lastEnhancementResult, setLastEnhancementResult] = useState<{ processingTime?: number; tokensUsed?: number } | null>(null);
   const [shortcut, setShortcut] = useState<string>('Ctrl+Alt+E');
   const [hasText, setHasText] = useState<boolean>(false);
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -184,9 +185,14 @@ export default function PopupApp() {
         if (isEnhancementError(result)) {
           setError(result.error);
           setSuggestions([]);
+          setLastEnhancementResult(null);
         } else {
           setSuggestions(result.suggestions ?? []);
           setLastProvider(result.provider ?? 'AI');
+          setLastEnhancementResult({
+            processingTime: result.processingTime,
+            tokensUsed: result.tokensUsed,
+          });
           setError(null);
         }
       } catch (err) {
@@ -213,6 +219,8 @@ export default function PopupApp() {
       enhanced: suggestion.text,
       type: suggestion.type,
       provider: lastProvider,
+      processingTime: lastEnhancementResult?.processingTime,
+      tokensUsed: lastEnhancementResult?.tokensUsed,
     });
   };
 

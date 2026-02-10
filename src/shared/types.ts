@@ -60,6 +60,25 @@ export interface HistoryItem {
   enhanced: string;
   type: string;
   provider: string;
+  // New fields
+  originalLength: number;
+  enhancedLength: number;
+  processingTime?: number;
+  tokensUsed?: number;
+  tags?: string[];
+  favorite?: boolean;
+  notes?: string;
+}
+
+export interface HistoryStats {
+  totalEnhancements: number;
+  totalCharactersProcessed: number;
+  averageProcessingTime: number;
+  mostUsedType: string;
+  mostUsedProvider: string;
+  enhancementsByType: Record<string, number>;
+  enhancementsByProvider: Record<string, number>;
+  enhancementsByDate: Record<string, number>;
 }
 
 export interface TextCaptureResult {

@@ -80,10 +80,18 @@ export default function PreferencesTab({
           <input
             type="checkbox"
             checked={config.startAtLogin}
-            onChange={(e) => update({ startAtLogin: e.target.checked })}
+            onChange={async (e) => {
+              const enabled = e.target.checked;
+              update({ startAtLogin: enabled });
+              // Update auto-launch setting
+              await window.electronAPI.updateAutoLaunch(enabled);
+            }}
           />
           Start at login
         </label>
+        <p className="setting-description">
+          Launches WriteUp automatically when you log in to your computer
+        </p>
       </div>
       <div className="preference-item">
         <label>Excluded apps (no enhancement when focused)</label>
