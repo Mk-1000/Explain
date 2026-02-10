@@ -38,8 +38,8 @@ export function registerIpcHandlers(
     // Validate input
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return {
-        error: 'Text is empty or invalid',
-        code: 'INVALID_INPUT',
+        error: 'Please select some text before enhancing',
+        code: 'NO_TEXT_SELECTED',
         textLength: 0,
         processingTime: Date.now() - startTime,
       };

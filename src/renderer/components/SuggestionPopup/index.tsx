@@ -13,6 +13,8 @@ interface SuggestionPopupProps {
   isLoading: boolean;
   error: string | null;
   emptyStateMessage?: string | null;
+  hasText?: boolean;
+  shortcut?: string;
 }
 
 export default function SuggestionPopup({
@@ -24,6 +26,8 @@ export default function SuggestionPopup({
   isLoading,
   error,
   emptyStateMessage,
+  hasText = true,
+  shortcut = 'Ctrl+Alt+E',
 }: SuggestionPopupProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showDiff, setShowDiff] = useState(false);
@@ -69,9 +73,43 @@ export default function SuggestionPopup({
         </button>
       </div>
 
-      {emptyStateMessage ? (
+      {emptyStateMessage || !hasText ? (
         <div className="empty-state">
-          <p>{emptyStateMessage}</p>
+          <div className="empty-state-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M9 12h6m-3-3v6m-9 1V8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          {emptyStateMessage ? (
+            <>
+              <h2 className="empty-state-title">
+                {emptyStateMessage.split('\n\n')[0]}
+              </h2>
+              <p className="empty-state-message">
+                {emptyStateMessage.split('\n\n').slice(1).join('\n\n')}
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="empty-state-title">No Text Selected</h2>
+              <p className="empty-state-message">
+                Please select some text first, then press the shortcut again.
+              </p>
+              <div className="instructions">
+                <ol>
+                  <li>Select text in any application</li>
+                  <li>Press <kbd>{shortcut}</kbd> (or your configured shortcut)</li>
+                  <li>Choose an enhancement option</li>
+                </ol>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="original-text">

@@ -1,6 +1,7 @@
 import ShortcutManager from './shortcut-manager';
+import type { TextCaptureResult } from '../../shared/types';
 
-export function getSelectedText(): string {
+export async function getSelectedText(): Promise<TextCaptureResult> {
   return ShortcutManager.getSelectedText();
 }
 

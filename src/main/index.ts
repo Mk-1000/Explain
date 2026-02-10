@@ -66,30 +66,82 @@ function registerGlobalShortcut(accelerator: string): void {
   if (!app.isReady()) return;
   const normalized = normalizeShortcut(accelerator);
   globalShortcut.unregisterAll();
-  const onShortcutTriggered = () => {
-    let text = ShortcutManager.getSelectedText()?.trim() ?? '';
-    if (!text) {
-      text = clipboard.readText()?.trim() ?? '';
-    }
-    if (looksLikeShortcutString(text)) {
-      text = '';
-    }
-    const cursorPosition = ShortcutManager.getCursorPosition();
-    const popup = popupManager.create(cursorPosition.x, cursorPosition.y);
-    popup.webContents.once('did-finish-load', () => {
-      popupManager.send('text-selected', {
-        text: text || '',
-        timestamp: Date.now(),
+  const onShortcutTriggered = async () => {
+    try {
+      // Get text with enhanced metadata
+      const captureResult = await ShortcutManager.getSelectedText();
+      
+      const { text, capturedFrom, copySimulated, captureMethod, attemptCount, totalDuration, platformToolAvailable } = captureResult;
+      
+      let finalText = text?.trim() ?? '';
+      
+      // Filter out shortcut strings
+      if (looksLikeShortcutString(finalText)) {
+        finalText = '';
+      }
+      
+      // Get cursor position
+      const cursorPosition = ShortcutManager.getCursorPosition();
+      
+      // Create popup window (always create, even if no text)
+      const popup = popupManager.create(cursorPosition.x, cursorPosition.y);
+      
+      // Send enhanced data to popup
+      popup.webContents.once('did-finish-load', () => {
+        popupManager.send('text-selected', {
+          text: finalText || '',
+          hasText: finalText.length > 0,
+          timestamp: Date.now(),
+          captureMetadata: {
+            capturedFrom: capturedFrom || 'none',
+            copySimulated: copySimulated || false,
+            captureMethod: captureMethod || undefined,
+            attemptCount: attemptCount || 0,
+            totalDuration: totalDuration || 0,
+            platformToolAvailable: platformToolAvailable || false,
+            installInstructions: platformToolAvailable ? null : ShortcutManager.getInstallationInstructions(),
+          },
+        });
       });
+      
+      // Log capture statistics
+      console.log(`[Main] Text captured: ${finalText.length} chars, from: ${capturedFrom || 'none'}, method: ${captureMethod || 'none'}, attempts: ${attemptCount || 0}, duration: ${totalDuration || 0}ms`);
+    } catch (error) {
+      console.error('[Main] Error in shortcut handler:', error);
+      
+      // Even on error, show popup with error message
+      const cursorPosition = ShortcutManager.getCursorPosition();
+      const popup = popupManager.create(cursorPosition.x, cursorPosition.y);
+      
+      popup.webContents.once('did-finish-load', () => {
+        popupManager.send('text-selected', {
+          text: '',
+          hasText: false,
+          timestamp: Date.now(),
+          captureMetadata: {
+            capturedFrom: 'none',
+            copySimulated: false,
+            platformToolAvailable: false,
+            installInstructions: ShortcutManager.getInstallationInstructions(),
+          },
+        });
+      });
+    }
+  };
+
+  // Make handler async-aware
+  const onShortcutTriggeredWrapper = () => {
+    onShortcutTriggered().catch((error) => {
+      console.error('[Main] Error in shortcut handler:', error);
     });
   };
 
-  const success = globalShortcut.register(normalized, onShortcutTriggered);
+  const success = globalShortcut.register(normalized, onShortcutTriggeredWrapper);
   if (!success) {
     console.error(`Failed to register shortcut: ${normalized}`);
     if (normalized !== DEFAULT_SHORTCUT) {
       globalShortcut.unregisterAll();
-      const fallbackSuccess = globalShortcut.register(DEFAULT_SHORTCUT, onShortcutTriggered);
+      const fallbackSuccess = globalShortcut.register(DEFAULT_SHORTCUT, onShortcutTriggeredWrapper);
       if (fallbackSuccess) {
         ConfigManager.setShortcut(DEFAULT_SHORTCUT);
         dialog.showErrorBox(
@@ -106,6 +158,16 @@ function registerGlobalShortcut(accelerator: string): void {
 function initializeApp(): void {
   const config = ConfigManager.getAll();
   PrivacyManager.setExcludedApps(config.excludedApps ?? []);
+
+  // Log platform capabilities at startup
+  const caps = ShortcutManager.getPlatformCapabilities();
+  console.log('[Main] Platform capabilities:', {
+    platform: caps.platform,
+    hasRobotJS: caps.hasRobotJS,
+    hasXdotool: caps.hasXdotool,
+    hasWtype: caps.hasWtype,
+    recommendedMethod: caps.recommendedMethod,
+  });
 
   // Register IPC before creating windows so renderer getConfig() is handled
   registerIpcHandlers(

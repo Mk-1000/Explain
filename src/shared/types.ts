@@ -61,3 +61,32 @@ export interface HistoryItem {
   type: string;
   provider: string;
 }
+
+export interface TextCaptureResult {
+  text: string;
+  capturedFrom: 'selection' | 'clipboard' | 'fallback' | 'none';
+  copySimulated: boolean;
+  platformToolAvailable: boolean;
+  captureMethod?: 'robotjs' | 'native-clipboard' | 'system-command' | 'xdotool' | 'wtype' | 'osascript' | 'powershell';
+  attemptCount?: number;
+  totalDuration?: number;
+  error?: string;
+}
+
+export interface PlatformCapabilities {
+  hasRobotJS: boolean;
+  hasNativeSelection: boolean;
+  platform: NodeJS.Platform;
+  recommendedMethod: 'robotjs' | 'clipboard-only' | 'system-command';
+  hasXdotool?: boolean;
+  hasWtype?: boolean;
+  hasXclip?: boolean;
+}
+
+export interface RetryConfig {
+  maxAttempts: number;
+  initialDelayMs: number;
+  maxDelayMs: number;
+  backoffMultiplier: number;
+  clipboardCheckIntervalMs: number;
+}

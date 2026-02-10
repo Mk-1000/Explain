@@ -16,7 +16,20 @@ export interface ElectronAPI {
   writeClipboard: (text: string) => Promise<boolean>;
   readClipboard: () => Promise<string>;
   writeAndPaste: (text: string) => Promise<boolean>;
-  onTextSelected: (callback: (data: { text: string; timestamp: number }) => void) => void;
+  onTextSelected: (callback: (data: { 
+    text: string; 
+    hasText: boolean;
+    timestamp: number; 
+    captureMetadata?: {
+      capturedFrom: 'selection' | 'clipboard' | 'fallback' | 'none';
+      copySimulated: boolean;
+      captureMethod?: 'robotjs' | 'native-clipboard' | 'system-command' | 'xdotool' | 'wtype' | 'osascript' | 'powershell';
+      attemptCount?: number;
+      totalDuration?: number;
+      platformToolAvailable: boolean;
+      installInstructions?: string | null;
+    };
+  }) => void) => void;
   removeAllListeners: (channel: string) => void;
   getHistory: () => Promise<import('./types').HistoryItem[]>;
   addHistory: (item: { original: string; enhanced: string; type: string; provider: string }) => Promise<boolean>;
