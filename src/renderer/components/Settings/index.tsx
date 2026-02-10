@@ -7,6 +7,21 @@ import PreferencesTab from './PreferencesTab';
 import HistoryList from '../History';
 import './styles.css';
 
+// Logo path - use correct path for dev and production
+// In dev: Vite publicDir serves assets/ at root, so use /logo.png
+// In production: assets are in dist/renderer/assets/, use ./assets/logo.png
+const getLogoPath = () => {
+  // Check if we're in development (Vite dev server)
+  if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+    // Vite publicDir: 'assets' serves files at root, so assets/logo.png -> /logo.png
+    return '/logo.png';
+  }
+  // Production: use relative path from HTML file location
+  return './assets/logo.png';
+};
+
+const LOGO_PATH = getLogoPath();
+
 type TabId = 'providers' | 'shortcuts' | 'preferences' | 'history';
 
 /**
@@ -19,6 +34,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabId>('providers');
   const [shortcutInput, setShortcutInput] = useState(DEFAULT_SHORTCUT);
   const [excludedApps, setExcludedApps] = useState<string[]>([]);
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     if (config) {
@@ -62,7 +78,27 @@ export default function Settings() {
   return (
     <div className="settings-panel">
       <div className="settings-header">
-        <h2>AI Text Enhancer – Settings</h2>
+        <div className="settings-header-content">
+          {!logoError ? (
+            <img 
+              src={LOGO_PATH} 
+              alt="WriteUp Logo" 
+              className="settings-logo"
+              onError={() => {
+                console.error(`[Settings] Failed to load logo from: ${LOGO_PATH}`);
+                setLogoError(true);
+              }}
+              onLoad={() => {
+                console.log(`[Settings] Logo loaded successfully from: ${LOGO_PATH}`);
+              }}
+            />
+          ) : (
+            <div className="settings-logo settings-logo-placeholder" title="Logo not found">
+              WU
+            </div>
+          )}
+          <h2>WriteUp – Settings</h2>
+        </div>
       </div>
       <div className="settings-tabs">
         <button
@@ -99,6 +135,7 @@ export default function Settings() {
           <ProvidersTab
             providers={config.providers}
             updateProvider={updateProvider}
+            reload={reload}
           />
         )}
         {activeTab === 'shortcuts' && (

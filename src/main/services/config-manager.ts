@@ -9,7 +9,7 @@ interface StoreSchema {
 
 class ConfigManagerClass {
   private store = new Store<StoreSchema>({
-    name: 'text-enhancer-config',
+    name: 'writeup-config',
     defaults: {
       config: DEFAULT_APP_CONFIG,
       history: [],
@@ -32,6 +32,23 @@ class ConfigManagerClass {
     const configAll = this.store.get('config');
     const providers = [...configAll.providers];
     const idx = providers.findIndex((p) => p.name === name);
+    
+    // Check if priority is being changed to 1
+    if (config.priority === 1 && idx >= 0) {
+      const currentProvider = providers[idx];
+      const oldPriority = currentProvider.priority;
+      
+      // Only reorder if the priority is actually changing to 1
+      if (oldPriority !== 1) {
+        // Shift all providers with priority <= oldPriority up by 1
+        providers.forEach((p, i) => {
+          if (i !== idx && p.priority <= oldPriority && p.priority >= 1) {
+            p.priority = p.priority + 1;
+          }
+        });
+      }
+    }
+    
     if (idx >= 0) {
       providers[idx] = { ...providers[idx], ...config };
     } else {

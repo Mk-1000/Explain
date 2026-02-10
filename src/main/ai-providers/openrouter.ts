@@ -52,8 +52,8 @@ export class OpenRouterProvider implements AIProvider {
           headers: {
             Authorization: `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://text-enhancer.app',
-            'X-Title': 'Text Enhancement App',
+            'HTTP-Referer': 'https://writeup.app',
+            'X-Title': 'WriteUp',
           },
         }
       );

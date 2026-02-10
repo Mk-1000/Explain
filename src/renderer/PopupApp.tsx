@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import SuggestionPopup from './components/SuggestionPopup';
 import { writeClipboard, writeAndPaste } from './utils/clipboard';
-import type { Suggestion, EnhancementResult } from '@shared/types';
+import { useTheme } from './hooks/useTheme';
+import type { Suggestion, EnhancementResult, AppConfig } from '@shared/types';
+import { DEFAULT_APP_CONFIG } from '@shared/constants';
 
 function isEnhancementError(
   result: EnhancementResult | { error: string; code: string }
@@ -102,6 +104,27 @@ export default function PopupApp() {
   const [lastProvider, setLastProvider] = useState<string>('AI');
   const [shortcut, setShortcut] = useState<string>('Ctrl+Alt+E');
   const [hasText, setHasText] = useState<boolean>(false);
+  const [config, setConfig] = useState<AppConfig | null>(null);
+
+  // Load config for theme
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        if (typeof window.electronAPI?.getConfig === 'function') {
+          const loadedConfig = await window.electronAPI.getConfig();
+          setConfig(loadedConfig ?? DEFAULT_APP_CONFIG);
+        } else {
+          setConfig(DEFAULT_APP_CONFIG);
+        }
+      } catch (err) {
+        console.error('Failed to load config:', err);
+        setConfig(DEFAULT_APP_CONFIG);
+      }
+    };
+    loadConfig();
+  }, []);
+
+  useTheme(config);
 
   useEffect(() => {
     // Fetch shortcut on mount

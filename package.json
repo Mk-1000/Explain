@@ -1,7 +1,7 @@
 {
-  "name": "ai-text-enhancer",
+  "name": "writeup",
   "version": "1.0.0",
-  "description": "AI-powered text enhancement desktop app",
+  "description": "WriteUp - AI-powered text enhancement desktop app",
   "author": {
     "name": "hamdi mokni",
     "email": "hamdimokni712@gmail.com"
@@ -48,8 +48,8 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "com.textenhancer.app",
-    "productName": "AI Text Enhancer",
+    "appId": "com.writeup.app",
+    "productName": "WriteUp",
     "directories": {
       "output": "release"
     },
@@ -60,16 +60,23 @@
     "mac": {
       "category": "public.app-category.productivity",
       "target": ["dmg", "zip"],
-      "icon": "assets/icon.icns"
+      "icon": "assets/logo.png"
     },
     "win": {
       "target": ["nsis", "portable"],
-      "icon": "assets/icon.ico"
+      "icon": "assets/logo.ico"
     },
     "linux": {
       "target": ["AppImage", "deb"],
       "category": "Utility",
-      "icon": "assets/icon.png"
+      "icon": "assets/logo.png",
+      "executableArgs": ["--no-sandbox"],
+      "desktop": {
+        "Icon": "writeup"
+      }
+    },
+    "appImage": {
+      "executableArgs": ["--no-sandbox"]
     },
     "nsis": {
       "oneClick": false,

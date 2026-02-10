@@ -7,6 +7,7 @@ import ConfigManager from './services/config-manager';
 import ShortcutManager from './services/shortcut-manager';
 import PrivacyManager from './services/privacy-manager';
 import { DEFAULT_SHORTCUT } from '../shared/constants';
+import { getLogoIconPath } from './utils/asset-path';
 
 declare global {
   namespace Electron {
@@ -190,15 +191,22 @@ function initializeApp(): void {
   registerGlobalShortcut(shortcut);
 
   // System tray (minimal-example, quick-start: tray icon with Settings / Quit)
-  const iconPath = path.join(__dirname, '../../../assets/icon.png');
+  const iconPath = getLogoIconPath();
   const icon = nativeImage.createFromPath(iconPath);
+  
+  if (icon.isEmpty()) {
+    console.warn(`[Tray] Icon is empty or not found at: ${iconPath}, using fallback`);
+  } else {
+    console.log(`[Tray] Icon loaded successfully: ${iconPath}, Size: ${icon.getSize()}`);
+  }
+  
   const trayIcon = icon.isEmpty()
     ? nativeImage.createFromDataURL(
         'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMklEQVQ4T2NkYGD4z0ABYBzVMKoBBg1GNAzGMWAY1YCBgYEBogHZChQNQzQAAQYAhmgGAb+lL2AAAAAASUVORK5CYII='
       )
     : icon;
   tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
-  tray.setToolTip('AI Text Enhancer');
+  tray.setToolTip('WriteUp');
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: 'Settings', click: () => { mainWindow?.show(); mainWindow?.focus(); } },

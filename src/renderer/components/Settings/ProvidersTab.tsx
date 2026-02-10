@@ -6,9 +6,10 @@ import './styles.css';
 interface ProvidersTabProps {
   providers: ProviderConfig[];
   updateProvider: (name: string, config: Partial<ProviderConfig>) => Promise<boolean>;
+  reload: () => Promise<void>;
 }
 
-export default function ProvidersTab({ providers, updateProvider }: ProvidersTabProps) {
+export default function ProvidersTab({ providers, updateProvider, reload }: ProvidersTabProps) {
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, boolean | null>>({});
   /** Local API key drafts; save to backend on blur so paste doesn't get cleared by refetch. */
@@ -80,6 +81,10 @@ export default function ProvidersTab({ providers, updateProvider }: ProvidersTab
         delete next[name];
         return next;
       });
+      // Reload settings to reflect reordered priorities
+      if (priority === 1 && currentPriority !== 1) {
+        await reload();
+      }
       return true;
     }
     setSaveStatus((prev) => ({ ...prev, [name]: 'failed' }));

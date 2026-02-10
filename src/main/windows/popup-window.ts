@@ -1,5 +1,6 @@
-import { BrowserWindow, screen } from 'electron';
+import { BrowserWindow, screen, nativeImage } from 'electron';
 import path from 'path';
+import { getLogoIconPath } from '../utils/asset-path';
 
 export class PopupWindowManager {
   private window: BrowserWindow | null = null;
@@ -25,6 +26,15 @@ export class PopupWindowManager {
     if (y < display.workArea.y) y = display.workArea.y;
 
     const preloadPath = path.join(__dirname, '../../preload/index.js');
+    const iconPath = getLogoIconPath();
+    const icon = nativeImage.createFromPath(iconPath);
+    
+    if (icon.isEmpty()) {
+      console.warn(`[PopupWindow] Icon is empty or not found at: ${iconPath}`);
+    } else {
+      console.log(`[PopupWindow] Icon loaded successfully: ${iconPath}, Size: ${icon.getSize()}`);
+    }
+    
     this.window = new BrowserWindow({
       width: popupWidth,
       height: popupHeight,
@@ -38,6 +48,7 @@ export class PopupWindowManager {
       minimizable: false,
       maximizable: false,
       show: false,
+      icon: icon.isEmpty() ? undefined : icon,
       webPreferences: {
         preload: preloadPath,
         nodeIntegration: false,

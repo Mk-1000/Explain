@@ -1,5 +1,5 @@
-appId: com.textenhancer.app
-productName: AI Text Enhancer
+appId: com.writeup.app
+productName: WriteUp
 directories:
   output: release
 files:
@@ -10,18 +10,25 @@ mac:
   target:
     - dmg
     - zip
-  icon: assets/icon.icns
+  icon: assets/logo.png
 win:
   target:
     - nsis
     - portable
-  icon: assets/icon.ico
+  icon: assets/logo.ico
 linux:
   target:
     - AppImage
     - deb
   category: Utility
-  icon: assets/icon.png
+  icon: assets/logo.png
+  executableArgs:
+    - --no-sandbox
+  desktop:
+    Icon: writeup
+appImage:
+  executableArgs:
+    - --no-sandbox
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
