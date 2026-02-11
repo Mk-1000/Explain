@@ -73,6 +73,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
       content: string;
       timestamp: number;
     }>) => ipcRenderer.invoke('chat:export-conversation', messages),
+    saveConversation: (conversation: {
+      id: string;
+      title: string;
+      messages: Array<{
+        id: string;
+        role: 'user' | 'assistant' | 'system';
+        content: string;
+        timestamp: number;
+      }>;
+      created: number;
+      updated: number;
+      tags: string[];
+    }) => ipcRenderer.invoke('chat:save-conversation', conversation),
+    getHistory: () => ipcRenderer.invoke('chat:get-history'),
+    deleteConversation: (id: string) => ipcRenderer.invoke('chat:delete-conversation', id),
+    clearAllHistory: () => ipcRenderer.invoke('chat:clear-all-history'),
+    getProviders: () => ipcRenderer.invoke('chat:get-providers'),
   },
 
   // Event listeners for chat

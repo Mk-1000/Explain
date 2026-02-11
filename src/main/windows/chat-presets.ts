@@ -1,4 +1,4 @@
-import type { ChatConfig } from './popup-chat-window';
+import type { ChatConfig } from '../../shared/types';
 
 /**
  * Predefined configuration presets for common use cases

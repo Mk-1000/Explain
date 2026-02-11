@@ -81,6 +81,31 @@ export interface HistoryStats {
   enhancementsByDate: Record<string, number>;
 }
 
+export interface ChatConfig {
+  responseStyle: 'concise' | 'balanced' | 'detailed';
+  tone: 'professional' | 'casual' | 'technical' | 'friendly';
+  creativity: 'low' | 'medium' | 'high';
+  contextAwareness: boolean;
+  maxTokens: number;
+  temperature: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+}
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  created: number;
+  updated: number;
+  tags: string[];
+}
+
 export interface TextCaptureResult {
   text: string;
   capturedFrom: 'selection' | 'clipboard' | 'fallback' | 'none';

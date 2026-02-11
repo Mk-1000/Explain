@@ -80,30 +80,93 @@ function registerChatShortcut(): void {
   
   const success = globalShortcut.register(chatShortcut, async () => {
     try {
-      // Get cursor position
-      const cursorPosition = ShortcutManager.getCursorPosition();
+      console.log('[Chat] Shortcut triggered');
       
-      // Optionally get selected text to use as initial input
+      // Get cursor position first (synchronous)
+      const cursorPosition = ShortcutManager.getCursorPosition();
+      console.log(`[Chat] Cursor at (${cursorPosition.x}, ${cursorPosition.y})`);
+      
+      // Capture selected text with enhanced metadata
       const captureResult = await ShortcutManager.getSelectedText();
       const selectedText = captureResult.text?.trim() || '';
       
+      console.log(`[Chat] Text capture result:`, {
+        textLength: selectedText.length,
+        capturedFrom: captureResult.capturedFrom,
+        method: captureResult.captureMethod,
+        attempts: captureResult.attemptCount,
+        duration: captureResult.totalDuration,
+      });
+      
       // Create chat window at cursor position
-      chatManager.create(
+      const chatWindow = chatManager.create(
         cursorPosition.x,
         cursorPosition.y,
-        selectedText // Pass selected text as initial message
+        selectedText
       );
       
-      console.log(`[Chat] Window opened at (${cursorPosition.x}, ${cursorPosition.y})`);
+      // Wait for DOM to be ready before sending data
+      chatWindow.webContents.once('dom-ready', () => {
+        console.log('[Chat] DOM ready, sending initialization data');
+        
+        // Send enhanced initialization data
+        chatWindow.webContents.send('chat-initialized', {
+          config: chatManager.getConfig(),
+          initialText: selectedText,
+          captureMetadata: {
+            capturedFrom: captureResult.capturedFrom,
+            copySimulated: captureResult.copySimulated,
+            hasText: selectedText.length > 0,
+            timestamp: Date.now(),
+            captureMethod: captureResult.captureMethod,
+            platformToolAvailable: captureResult.platformToolAvailable,
+          },
+        });
+        
+        console.log(`[Chat] Initialization data sent (text: ${selectedText.length} chars)`);
+      });
+      
+      // Additional ready-to-show handler for redundancy
+      chatWindow.once('ready-to-show', () => {
+        console.log('[Chat] Window ready to show');
+      });
+      
+      // Enhanced error logging
+      chatWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+        console.error('[Chat] Failed to load:', {
+          errorCode,
+          errorDescription,
+          url: validatedURL,
+        });
+      });
+      
+      console.log(`[Chat] Window created successfully`);
+      
     } catch (error) {
-      console.error('[Chat] Error opening chat window:', error);
+      console.error('[Chat] Error in shortcut handler:', error);
+      
+      // Show user-friendly error dialog
+      dialog.showErrorBox(
+        'Chat Window Error',
+        `Failed to open chat window: ${error instanceof Error ? error.message : 'Unknown error'}\n\n` +
+        'Please try again or check your configuration in Settings.'
+      );
     }
   });
 
   if (success) {
-    console.log(`[Chat] Registered chat shortcut: ${chatShortcut}`);
+    console.log(`[Chat] Successfully registered chat shortcut: ${chatShortcut}`);
   } else {
     console.error(`[Chat] Failed to register chat shortcut: ${chatShortcut}`);
+    
+    // Notify user of conflict
+    if (mainWindow) {
+      mainWindow.webContents.send('shortcut-registration-failed', {
+        shortcut: chatShortcut,
+        feature: 'AI Chat',
+        reason: 'Shortcut may be in use by another application',
+      });
+    }
   }
 }
 
@@ -361,6 +424,7 @@ function initializeApp(): void {
   ipcMain.on('window:close', (event: IpcMainEvent) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window) {
+      console.log('[Window] Closing window:', window.id);
       window.close();
     }
   });
@@ -368,7 +432,26 @@ function initializeApp(): void {
   ipcMain.on('window:minimize', (event: IpcMainEvent) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (window) {
+      console.log('[Window] Minimizing window:', window.id);
       window.minimize();
+    }
+  });
+  
+  // Enhanced focus handler for chat windows
+  ipcMain.on('window:focus', (event: IpcMainEvent) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window) {
+      console.log('[Window] Focusing window:', window.id);
+      window.focus();
+      
+      // Extra focus enforcement on Linux
+      if (process.platform === 'linux') {
+        window.moveTop();
+        window.setAlwaysOnTop(true);
+        setTimeout(() => {
+          window.setAlwaysOnTop(false);
+        }, 100);
+      }
     }
   });
 

@@ -1,4 +1,4 @@
-import type { AppConfig, ProviderConfig } from './types';
+import type { AppConfig, ProviderConfig, ChatConfig } from './types';
 
 export const DEFAULT_SHORTCUT = 'CommandOrControl+Alt+E';
 
@@ -29,4 +29,13 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   enableHistory: true,
   startAtLogin: true,
   excludedApps: [],
+};
+
+export const DEFAULT_CHAT_CONFIG: ChatConfig = {
+  responseStyle: 'balanced',
+  tone: 'professional',
+  creativity: 'medium',
+  contextAwareness: true,
+  maxTokens: 1000,
+  temperature: 0.7,
 };

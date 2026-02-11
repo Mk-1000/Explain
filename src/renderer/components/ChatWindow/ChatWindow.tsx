@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './ChatWindow.css';
 
 interface ChatMessage {
@@ -68,7 +68,7 @@ export const ChatWindow: React.FC = () => {
     };
   }, []);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = useCallback(async () => {
     if (!inputValue.trim() || isLoading) return;
 
     const userMessage: ChatMessage = {
@@ -79,6 +79,7 @@ export const ChatWindow: React.FC = () => {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentMessages = [...messages, userMessage];
     setInputValue('');
     setIsLoading(true);
     setError(null);
@@ -105,9 +106,82 @@ export const ChatWindow: React.FC = () => {
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  };
+  }, [inputValue, isLoading, messages, config]);
+
+  const handleExportChat = useCallback(async () => {
+    try {
+      const exportText = await window.electronAPI.chat.exportConversation(messages);
+      // Copy to clipboard
+      navigator.clipboard.writeText(exportText);
+      alert('Conversation exported to clipboard!');
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
+  }, [messages]);
+
+  // Keyboard shortcuts handler
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Escape: Close window
+      if (e.key === 'Escape') {
+        window.electronAPI.closeWindow();
+        return;
+      }
+
+      // Ctrl+Enter or Cmd+Enter: Send message
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isLoading && inputValue.trim()) {
+          handleSendMessage();
+        }
+        return;
+      }
+
+      // Ctrl+L or Cmd+L: Clear conversation
+      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+        e.preventDefault();
+        setMessages([]);
+        window.electronAPI.chat.clearHistory();
+        return;
+      }
+
+      // Ctrl+K or Cmd+K: Focus input
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        return;
+      }
+
+      // Ctrl+S or Cmd+S: Save conversation (export)
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (messages.length > 0) {
+          handleExportChat();
+        }
+        return;
+      }
+
+      // Ctrl+Shift+C or Cmd+Shift+C: Copy last response
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant');
+        if (lastAssistantMessage) {
+          navigator.clipboard.writeText(lastAssistantMessage.content);
+          // Show brief feedback (could be enhanced with a toast)
+          console.log('Copied last response to clipboard');
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [messages, isLoading, inputValue, handleSendMessage, handleExportChat]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter: Send message (Shift+Enter for new line)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -117,17 +191,6 @@ export const ChatWindow: React.FC = () => {
   const handleClearChat = () => {
     setMessages([]);
     window.electronAPI.chat.clearHistory();
-  };
-
-  const handleExportChat = async () => {
-    try {
-      const exportText = await window.electronAPI.chat.exportConversation(messages);
-      // Copy to clipboard
-      navigator.clipboard.writeText(exportText);
-      alert('Conversation exported to clipboard!');
-    } catch (err) {
-      console.error('Export failed:', err);
-    }
   };
 
   const updateConfig = async (updates: Partial<ChatConfig>) => {

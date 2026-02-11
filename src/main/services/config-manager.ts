@@ -1,10 +1,12 @@
 import Store from 'electron-store';
-import type { AppConfig, ProviderConfig, HistoryItem, HistoryStats } from '../../shared/types';
-import { DEFAULT_APP_CONFIG } from '../../shared/constants';
+import type { AppConfig, ProviderConfig, HistoryItem, HistoryStats, ChatConfig, ChatConversation } from '../../shared/types';
+import { DEFAULT_APP_CONFIG, DEFAULT_CHAT_CONFIG } from '../../shared/constants';
 
 interface StoreSchema {
   config: AppConfig;
   history: HistoryItem[];
+  chatConfig: ChatConfig;
+  chatHistory: ChatConversation[];
 }
 
 class ConfigManagerClass {
@@ -13,6 +15,8 @@ class ConfigManagerClass {
     defaults: {
       config: DEFAULT_APP_CONFIG,
       history: [],
+      chatConfig: DEFAULT_CHAT_CONFIG,
+      chatHistory: [],
     },
   });
 
@@ -266,6 +270,45 @@ class ConfigManagerClass {
 
   clearHistory(): void {
     this.store.set('history', []);
+  }
+
+  // Chat configuration persistence
+  getChatConfig(): ChatConfig {
+    return this.store.get('chatConfig', DEFAULT_CHAT_CONFIG);
+  }
+
+  setChatConfig(config: Partial<ChatConfig>): void {
+    const current = this.getChatConfig();
+    this.store.set('chatConfig', { ...current, ...config });
+  }
+
+  // Chat history persistence
+  getChatHistory(): ChatConversation[] {
+    return this.store.get('chatHistory', []);
+  }
+
+  saveChatConversation(conversation: ChatConversation): void {
+    const history = this.getChatHistory();
+    const existing = history.findIndex(c => c.id === conversation.id);
+    
+    if (existing >= 0) {
+      history[existing] = { ...conversation, updated: Date.now() };
+    } else {
+      history.unshift(conversation);
+    }
+    
+    // Keep last 50 conversations
+    this.store.set('chatHistory', history.slice(0, 50));
+  }
+
+  deleteChatConversation(id: string): void {
+    const history = this.getChatHistory();
+    const updated = history.filter(c => c.id !== id);
+    this.store.set('chatHistory', updated);
+  }
+
+  clearChatHistory(): void {
+    this.store.set('chatHistory', []);
   }
 }
 
