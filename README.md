@@ -1,6 +1,9 @@
 # WriteUp
 
-Desktop app that enhances selected text using AI. Select text anywhere, press **Ctrl+Shift+Space** (or **Cmd+Shift+Space** on Mac), and get suggestions to replace or copy.
+Desktop app that enhances selected text using AI. Select text anywhere and use keyboard shortcuts to enhance or chat:
+- **Ctrl+Shift+R** (or **Cmd+Shift+R** on Mac) - Reformulate/rephrase selected text
+- **Ctrl+Shift+Space** (or **Cmd+Shift+Space** on Mac) - Open AI chat popup
+- Configurable shortcut (default: **Ctrl+Alt+E** / **Cmd+Alt+E**) - Enhance with default enhancement type
 
 ## Setup
 
@@ -157,7 +160,10 @@ Before building for production:
 
 ## Features
 
-- **Global shortcut**: Default `Ctrl+Shift+Space` / `Cmd+Shift+Space` to capture selected text and open the popup.
+- **Keyboard shortcuts**:
+  - **Ctrl+Shift+R** / **Cmd+Shift+R** - Reformulate/rephrase selected text (always uses rephrase enhancement type)
+  - **Ctrl+Shift+Space** / **Cmd+Shift+Space** - Open AI chat popup
+  - Configurable shortcut (default: **Ctrl+Alt+E** / **Cmd+Alt+E**) - Enhance selected text with default enhancement type from settings
 - **AI providers**: OpenAI, OpenRouter, Anthropic, Ollama (local). Configure API keys and priority in Settings → AI Providers.
 - **Enhancement types**: Grammar, rephrase, formal, casual, concise, expand (configurable default).
 - **Replace / Copy**: Replace pastes the suggestion and closes the popup; Copy writes to clipboard.

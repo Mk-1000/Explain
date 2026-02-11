@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('privacy:remove-excluded-app', appName),
   closePopup: () => ipcRenderer.invoke('window:close-popup'),
   showSettings: () => ipcRenderer.invoke('window:show-settings'),
+  closeWindow: () => ipcRenderer.send('window:close'),
+  minimizeWindow: () => ipcRenderer.send('window:minimize'),
   writeClipboard: (text: string) => ipcRenderer.invoke('clipboard:write', text),
   readClipboard: () => ipcRenderer.invoke('clipboard:read'),
   writeAndPaste: (text: string) => ipcRenderer.invoke('clipboard:write-and-paste', text),
@@ -42,4 +44,67 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getHistoryStats: () => ipcRenderer.invoke('history:get-stats'),
   exportHistory: (format: 'json' | 'csv') => ipcRenderer.invoke('history:export', format),
   updateAutoLaunch: (enabled: boolean) => ipcRenderer.invoke('config:update-auto-launch', enabled),
+  
+  // Chat-specific APIs
+  chat: {
+    sendMessage: (request: {
+      message: string;
+      conversationHistory: Array<{
+        id: string;
+        role: 'user' | 'assistant' | 'system';
+        content: string;
+        timestamp: number;
+      }>;
+      useContext: boolean;
+    }) => ipcRenderer.invoke('chat:send-message', request),
+    getConfig: () => ipcRenderer.invoke('chat:get-config'),
+    updateConfig: (config: {
+      responseStyle?: 'concise' | 'balanced' | 'detailed';
+      tone?: 'professional' | 'casual' | 'technical' | 'friendly';
+      creativity?: 'low' | 'medium' | 'high';
+      contextAwareness?: boolean;
+      maxTokens?: number;
+      temperature?: number;
+    }) => ipcRenderer.invoke('chat:update-config', config),
+    clearHistory: () => ipcRenderer.invoke('chat:clear-history'),
+    exportConversation: (messages: Array<{
+      id: string;
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+      timestamp: number;
+    }>) => ipcRenderer.invoke('chat:export-conversation', messages),
+  },
+
+  // Event listeners for chat
+  onChatConfigUpdated: (callback: (config: {
+    responseStyle: 'concise' | 'balanced' | 'detailed';
+    tone: 'professional' | 'casual' | 'technical' | 'friendly';
+    creativity: 'low' | 'medium' | 'high';
+    contextAwareness: boolean;
+    maxTokens: number;
+    temperature: number;
+  }) => void) => {
+    const subscription = (_event: any, config: any) => callback(config);
+    ipcRenderer.on('chat-config-updated', subscription);
+    return () => ipcRenderer.removeListener('chat-config-updated', subscription);
+  },
+
+  onChatInitialized: (
+    callback: (data: {
+      config: {
+        responseStyle: 'concise' | 'balanced' | 'detailed';
+        tone: 'professional' | 'casual' | 'technical' | 'friendly';
+        creativity: 'low' | 'medium' | 'high';
+        contextAwareness: boolean;
+        maxTokens: number;
+        temperature: number;
+      };
+      initialText: string;
+    }) => void
+  ) => {
+    const subscription = (_event: any, data: any) => callback(data);
+    ipcRenderer.on('chat-initialized', subscription);
+    return () => ipcRenderer.removeListener('chat-initialized', subscription);
+  },
+
 });

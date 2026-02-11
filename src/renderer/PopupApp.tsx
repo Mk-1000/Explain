@@ -146,7 +146,8 @@ export default function PopupApp() {
     api.onTextSelected(async (data: { 
       text: string; 
       hasText: boolean;
-      timestamp: number; 
+      timestamp: number;
+      enhancementType?: 'grammar' | 'rephrase' | 'formal' | 'casual' | 'concise' | 'expand';
       captureMetadata?: CaptureMetadata;
     }) => {
       const text = data.text?.trim() ?? '';
@@ -177,7 +178,8 @@ export default function PopupApp() {
       setLoading(true);
       try {
         const config = await api.getConfig();
-        const enhancementType = (config?.defaultEnhancementType as string) ?? 'rephrase';
+        // Use override enhancementType if provided, otherwise use config default
+        const enhancementType = data.enhancementType ?? (config?.defaultEnhancementType as string) ?? 'rephrase';
         const result = await api.enhanceText(text, {
           type: enhancementType as 'grammar' | 'rephrase' | 'formal' | 'casual' | 'concise' | 'expand',
           maxVariants: config?.showMultipleSuggestions ? 3 : 1,

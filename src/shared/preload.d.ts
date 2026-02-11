@@ -19,7 +19,8 @@ export interface ElectronAPI {
   onTextSelected: (callback: (data: { 
     text: string; 
     hasText: boolean;
-    timestamp: number; 
+    timestamp: number;
+    enhancementType?: 'grammar' | 'rephrase' | 'formal' | 'casual' | 'concise' | 'expand';
     captureMetadata?: {
       capturedFrom: 'selection' | 'clipboard' | 'fallback' | 'none';
       copySimulated: boolean;
@@ -42,6 +43,77 @@ export interface ElectronAPI {
   getHistoryStats: () => Promise<import('./types').HistoryStats>;
   exportHistory: (format: 'json' | 'csv') => Promise<{ success: boolean; path?: string }>;
   updateAutoLaunch: (enabled: boolean) => Promise<boolean>;
+  
+  // Chat-specific APIs
+  chat: {
+    sendMessage: (request: {
+      message: string;
+      conversationHistory: Array<{
+        id: string;
+        role: 'user' | 'assistant' | 'system';
+        content: string;
+        timestamp: number;
+      }>;
+      useContext: boolean;
+    }) => Promise<{
+      message: string;
+      messageId: string;
+      timestamp: number;
+      tokensUsed?: number;
+      processingTime: number;
+    }>;
+    getConfig: () => Promise<{
+      responseStyle: 'concise' | 'balanced' | 'detailed';
+      tone: 'professional' | 'casual' | 'technical' | 'friendly';
+      creativity: 'low' | 'medium' | 'high';
+      contextAwareness: boolean;
+      maxTokens: number;
+      temperature: number;
+    }>;
+    updateConfig: (config: {
+      responseStyle?: 'concise' | 'balanced' | 'detailed';
+      tone?: 'professional' | 'casual' | 'technical' | 'friendly';
+      creativity?: 'low' | 'medium' | 'high';
+      contextAwareness?: boolean;
+      maxTokens?: number;
+      temperature?: number;
+    }) => Promise<void>;
+    clearHistory: () => Promise<void>;
+    exportConversation: (messages: Array<{
+      id: string;
+      role: 'user' | 'assistant' | 'system';
+      content: string;
+      timestamp: number;
+    }>) => Promise<string>;
+  };
+
+  // Event listeners for chat
+  onChatConfigUpdated: (callback: (config: {
+    responseStyle: 'concise' | 'balanced' | 'detailed';
+    tone: 'professional' | 'casual' | 'technical' | 'friendly';
+    creativity: 'low' | 'medium' | 'high';
+    contextAwareness: boolean;
+    maxTokens: number;
+    temperature: number;
+  }) => void) => () => void;
+
+  onChatInitialized: (
+    callback: (data: {
+      config: {
+        responseStyle: 'concise' | 'balanced' | 'detailed';
+        tone: 'professional' | 'casual' | 'technical' | 'friendly';
+        creativity: 'low' | 'medium' | 'high';
+        contextAwareness: boolean;
+        maxTokens: number;
+        temperature: number;
+      };
+      initialText: string;
+    }) => void
+  ) => () => void;
+
+  // Window controls
+  closeWindow: () => void;
+  minimizeWindow: () => void;
 }
 
 declare global {

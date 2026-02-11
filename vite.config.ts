@@ -13,6 +13,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         popup: path.resolve(__dirname, 'popup.html'),
+        chat: path.resolve(__dirname, 'chat.html'),
       },
     },
   },

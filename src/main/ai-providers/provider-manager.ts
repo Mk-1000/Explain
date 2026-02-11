@@ -1,14 +1,14 @@
 import type { AIProvider, EnhancementOptions, EnhancementResult } from '../../shared/types';
-import { OpenAIProvider } from './openai';
+import { OpenAIProviderWithChat } from './openai-chat-provider';
 import { OpenRouterProvider } from './openrouter';
-import { AnthropicProvider } from './anthropic';
+import { AnthropicProviderWithChat } from './anthropic-chat-provider';
 import { OllamaProvider } from './ollama';
 import ConfigManager from '../services/config-manager';
 
 const providerInstances: AIProvider[] = [
-  new OpenAIProvider(),
+  new OpenAIProviderWithChat(),
   new OpenRouterProvider(),
-  new AnthropicProvider(),
+  new AnthropicProviderWithChat(),
   new OllamaProvider(),
 ];
 
